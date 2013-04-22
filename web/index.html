@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title></title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css" rel="stylesheet">
+
+        <script src="libs/stomp.js"></script>
+        <script src="//cdn.sockjs.org/sockjs-0.3.min.js"></script>
+        <script src="//code.jquery.com/jquery-1.8.2.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
+        <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+        <audio id="music">
+            <source src="media/sad.mp3" type="audio/mpeg">
+        </audio>
+        <div class="navbar navbar-inverse">
+            <div class="navbar-inner">
+                <a class="brand" href="#">Seek and Destroy</a>
+            </div>
+        </div>
+        <div id="welcome" class="hero-unit">
+            <h1>Seek and Destroy!</h1>
+            <p>Welcome to the Seek and Destroy game.  Good luck and beware of the F-STAMP!</p>
+            <p>
+                <a id="setup" class="btn btn-primary btn-large">
+                    Setup Game
+                </a>
+            </p>
+        </div>
+        <div id="scoreboard" class="container" style="display: none;">
+            <div class="row">
+                <div class="span2">
+                    <h2 id="timer">
+                        0:00:00
+                    </h2>
+                </div>
+                <div class="span10">
+                    <h1 id="currteam">
+                    </h1>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="span3">
+                    <h1>Target 1</h1>
+                    <span class="badge">0</span>
+                </div>
+                <div class="span3">
+                    <h1>Target 2</h1>
+                    <span class="badge badge-success">0</span>
+                </div>
+                <div class="span3">
+                    <h1>Target 3</h1>
+                    <span class="badge badge-important">0</span>
+                </div>
+                <div class="span3">
+                    <h1>Target 4</h1>
+                    <span class="badge badge-success">0</span>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="span12">
+                    <a href="#" id="manualdone" class="btn btn-primary">RPi Done!</a>
+                </div>
+            </div>
+        </div>
+        <div id="setupwindow" class="modal hide fade">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h3>Game Settings</h3>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal">
+                    <div class="control-group">
+                        <label class="control-label" for="inputTeamname">Team Name</label>
+                        <div class="controls">
+                            <input type="text" id="inputTeamname" placeholder="Your Team Name" required>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="inputTeamcode">Team Code</label>
+                        <div class="controls">
+                            <input type="text" id="inputTeamcode" placeholder="Enter the Team Code" required>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="inputGamecode">Game Code</label>
+                        <div class="controls">
+                            <input type="text" id="inputGamecode" placeholder="Enter the Game Code" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="begin" class="btn btn-primary">Let's Begin!</a>
+            </div>
+        </div>
+        <div id="finalscorewindow" class="modal hide fade">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h3><span id="resultTeamName"></span>'s Results</h3>
+            </div>
+            <div class="modal-body">
+                <p>aaaaaaaaaaaaaannnnnd.....  <strong>F-STAMP!!!</strong></p>
+
+                <form class="form-horizontal">
+                    <div class="control-group">
+                        <label class="control-label" for="inputTime">End Time</label>
+                        <div class="controls">
+                            <input id="inputTime" type="text" class="input-small">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label" for="inputHits">Hits</label>
+                        <div class="controls">
+                            <input id="inputHits" type="text" class="input-mini">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label" for="inputMisses">Misses</label>
+                        <div class="controls">
+                            <input id="inputMisses" type="text" class="input-mini">
+                        </div>
+                    </div>
+                </form>
+                <hr>
+                <h2>Score</h2>
+                <form class="form-horizontal">
+                    <div class="control-group">
+                        <label class="control-label" for="inputFinalscore">Final Score</label>
+                        <div class="controls">
+                            <input type="text" id="inputFinalscore" class="input-small" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="finish" class="btn btn-primary">Finish!</a>
+            </div>
+        </div>
+        <script>
+            "use strict";
+            $(function(){
+                
+                $('#setup').on('click', function() {
+                    $('#setupwindow').modal();
+                });
+                
+                //TODO: wait till pi says it's ready
+                $('#begin').on('click', function() {
+                    $('#timer').removeClass('text-warning');
+                    $('#timer').removeClass('text-error');
+                    $('#timer').addClass('text-info');
+                            
+                    $('#setupwindow').modal('hide');
+                    $('#welcome').hide();
+                    $('#scoreboard').slideDown('slow');
+                    
+                    var team = Sad.getNewTeam();
+                    team.name = $('#inputTeamname').val();
+                    team.code = $('#inputTeamcode').val();
+                    
+                    Sad.addTeam(team);
+                    Sad.setCurrentTeam(team.code);
+                    $('#currteam').text(Sad.currentTeam.name);
+                    Sad.Timer.start();
+                    $('#music')[0].play();
+                });
+                
+                $('#manualdone').on('click', function() {
+                    $('#finalscorewindow').modal();
+                    Sad.Timer.stop();
+                    $("#music")[0].pause();
+                    
+                    //$("#music")[0].currentTime = 0;
+                    
+                    Sad.currentTeam.endTime.ticks = Sad.Timer.getTick();
+                    Sad.currentTeam.endTime.display = $('#timer').text();
+                    
+                    $('#resultTeamName').html(Sad.currentTeam.name);
+                    
+                    $('#inputTime').val(Sad.currentTeam.endTime.display);
+                    //$('#inputHits').val(Sad.currentTeam.hits);
+                    //$('#inputMisses').val(Sad.currentTeam.misses);
+                });
+                
+                $('#finish').on('click', function() {
+                    Sad.Timer.reset();
+                    $('#scoreboard').hide();
+                    $('#welcome').slideDown('slow');
+                    $('#finalscorewindow').modal('hide');
+                    
+                    c
+                    
+                });
+            });
+            
+            var Sad = {
+                TARGET_COUNT: 4,
+                //in 10 milliseconds.  2 mins
+                TIME_WARNING: 6000,
+                TIME_DANGER: 9000,
+                TIME_LIMIT: 12000,
+                TargetStatusType: {
+                    GOOD: 0,
+                    EVIL: 1,
+                    NEUTRAL: 2
+                },
+                Target: {
+                    status: null,
+                    hits: 0,
+                    misses: 0
+                },
+                currentTeam: null,
+                teams: [],
+                getNewTeam: function() {
+                    var team = null; 
+                    team = $.extend(team, this.Team);
+                    
+                    return team;
+                },
+                addTeam: function (team) {
+                    var added = true;
+                    _.each(this.teams, function(teamIt) {
+                        if (teamIt.code == team.code) {
+                            added = false;
+                        }
+                    });
+                    
+                    if (added) {
+                        this.teams.push(team);
+                    }
+                    return added;
+                },
+                setCurrentTeam: function(code) {
+                    var setTeam = null;
+                    _.each(this.teams, function(team) {
+                        if (team.code == code) {
+                            Sad.currentTeam = team;
+                            setTeam = team;
+                        }
+                    });
+                    
+                    return setTeam;
+                },
+                Team: {
+                    name: null,
+                    code: null,
+                    endTime: {
+                        ticks: 0,
+                        display: '0:00:00'},
+                    targets: [],
+                    setTargets: function () {
+                        var i = 0;
+                        for (i = 0; i < Sad.TARGET_COUNT; i++) {
+                            var target = null;
+                            target = $.extend(target, this.Target);
+                            target.status = Sad.TargetStatusType.NEUTRAL;
+                            this.targets.push(target)
+                        }
+                    }
+                },
+                Timer: {
+                    DEFAULT_DISPLAY: '0:00:000',
+                    id: null,
+                    tick: 0,
+                    elem: $('#timer')[0],
+                    start: function() {
+                        this.id = window.setInterval(this.setTick, 10);
+                    },
+                    setTick: function() {
+                        Sad.Timer.tick++;
+                        
+                        var milli = Sad.Timer.tick % 100;
+                        var seconds = Math.floor(Sad.Timer.tick / 100);
+                        var minutes = Math.floor(seconds / 60);
+
+                        seconds %= 60;
+                        
+                        if (milli < 10) {
+                            milli = '0' + milli.toString();
+                        }
+                        if (seconds < 10) {
+                            seconds = '0' + seconds.toString();
+                        }
+                        Sad.Timer.elem.innerHTML = minutes + ':' + seconds + ':' + milli;
+                        if (Sad.Timer.tick === Sad.TIME_WARNING) {
+                            $('#timer').removeClass('text-info');
+                            $('#timer').addClass('text-warning');
+                        }
+                        if (Sad.Timer.tick === Sad.TIME_DANGER) {
+                            $('#timer').removeClass('text-warning');
+                            $('#timer').addClass('text-error');
+                        }
+                        if (Sad.Timer.tick === Sad.TIME_LIMIT) {
+                            Sad.Timer.stop();
+                        }
+                    },
+                    stop: function() {
+                        window.clearInterval(Sad.Timer.id);
+                        Sad.Timer.id = null;
+                    },
+                    reset: function() {
+                        Sad.Timer.stop();
+                        Sad.Timer.tick = 0;
+                        Sad.Timer.elem.innerHTML = Sad.Timer.DEFAULT_DISPLAY;
+                    },
+                    getTick: function() {
+                        return this.tick;
+                    }
+                }
+            };
+        </script>
+    </body>
+</html>
