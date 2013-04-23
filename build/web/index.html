@@ -81,9 +81,9 @@
                         </div>
                     </div>
                     <div class="control-group">
-                        <label class="control-label" for="inputTeamcode">Team Code</label>
+                        <label class="control-label" for="inputTeamIP">Team IP Address</label>
                         <div class="controls">
-                            <input type="text" id="inputTeamcode" placeholder="Enter the Team Code" required>
+                            <input type="text" id="inputTeamIP" placeholder="###.###.###.###" required>
                         </div>
                     </div>
                     <div class="control-group">
@@ -145,14 +145,21 @@
         </div>
         <script>
             "use strict";
+            var socket= new WebSocket('ws://192.168.3.3:4500');
+            
+            socket.onmessage = function(s) {
+                alert('got reply '+ s.data);
+            };
             $(function(){
                 
-                $('#setup').on('click', function() {
+                $('#setup').on('click', function() {                    
+                    //socket.send('test');
                     $('#setupwindow').modal();
                 });
                 
                 //TODO: wait till pi says it's ready
                 $('#begin').on('click', function() {
+                    
                     $('#timer').removeClass('text-warning');
                     $('#timer').removeClass('text-error');
                     $('#timer').addClass('text-info');
@@ -163,13 +170,18 @@
                     
                     var team = Sad.getNewTeam();
                     team.name = $('#inputTeamname').val();
-                    team.code = $('#inputTeamcode').val();
+                    team.ip = $('#inputTeamIP').val();
                     
                     Sad.addTeam(team);
-                    Sad.setCurrentTeam(team.code);
+                    team = Sad.setCurrentTeam(team.name);
+                    
+                    Sad.Team.addNewGame($('#inputGamecode').val(), team);
+                    
                     $('#currteam').text(Sad.currentTeam.name);
                     Sad.Timer.start();
                     $('#music')[0].play();
+                    var status = { gameStatus: "start", code: "sqrt(2)" }
+                    socket.send(JSON.stringify(Sad.currentTeam));
                 });
                 
                 $('#manualdone').on('click', function() {
@@ -179,12 +191,12 @@
                     
                     //$("#music")[0].currentTime = 0;
                     
-                    Sad.currentTeam.endTime.ticks = Sad.Timer.getTick();
-                    Sad.currentTeam.endTime.display = $('#timer').text();
+                    Sad.currentTeam.getCurrentGame(Sad.currentTeam).endTime.ticks = Sad.Timer.getTick();
+                    Sad.currentTeam.getCurrentGame(Sad.currentTeam).endTime.display = $('#timer').text();
                     
                     $('#resultTeamName').html(Sad.currentTeam.name);
                     
-                    $('#inputTime').val(Sad.currentTeam.endTime.display);
+                    $('#inputTime').val(Sad.currentTeam.getCurrentGame(Sad.currentTeam).endTime.display);
                     //$('#inputHits').val(Sad.currentTeam.hits);
                     //$('#inputMisses').val(Sad.currentTeam.misses);
                 });
@@ -195,12 +207,12 @@
                     $('#welcome').slideDown('slow');
                     $('#finalscorewindow').modal('hide');
                     
-                    c
-                    
+                    socket.send(JSON.stringify(Sad.currentTeam));
                 });
             });
             
             var Sad = {
+                gameCounter: 0,
                 TARGET_COUNT: 4,
                 //in 10 milliseconds.  2 mins
                 TIME_WARNING: 6000,
@@ -212,6 +224,7 @@
                     NEUTRAL: 2
                 },
                 Target: {
+                    id: 0,
                     status: null,
                     hits: 0,
                     misses: 0
@@ -227,7 +240,7 @@
                 addTeam: function (team) {
                     var added = true;
                     _.each(this.teams, function(teamIt) {
-                        if (teamIt.code == team.code) {
+                        if (teamIt.name.toLowerCase() == team.name.toLowerCase()) {
                             added = false;
                         }
                     });
@@ -237,10 +250,10 @@
                     }
                     return added;
                 },
-                setCurrentTeam: function(code) {
+                setCurrentTeam: function(name) {
                     var setTeam = null;
                     _.each(this.teams, function(team) {
-                        if (team.code == code) {
+                        if (team.name.toLowerCase() === name.toLowerCase()) {
                             Sad.currentTeam = team;
                             setTeam = team;
                         }
@@ -250,18 +263,39 @@
                 },
                 Team: {
                     name: null,
+                    ip: null,
+                    games: [],
+                    addNewGame: function (code, team) {
+                        var game = null; 
+                        game = $.extend(game, Sad.Game);
+                        
+                        game.id = Sad.gameCounter++;
+                        game.code = code;
+                        team.games.push(game);
+                        Sad.Game.setTargets(game);
+                        
+                        
+                        return game;
+                    },
+                    getCurrentGame: function(team) {
+                        return team.games[0];
+                    }
+                },
+                Game: {
+                    id: null,
                     code: null,
                     endTime: {
                         ticks: 0,
                         display: '0:00:00'},
                     targets: [],
-                    setTargets: function () {
+                    setTargets: function (game) {
                         var i = 0;
                         for (i = 0; i < Sad.TARGET_COUNT; i++) {
                             var target = null;
-                            target = $.extend(target, this.Target);
+                            target = $.extend(target, Sad.Target);
+                            target.id = i + 1;
                             target.status = Sad.TargetStatusType.NEUTRAL;
-                            this.targets.push(target)
+                            game.targets.push(target)
                         }
                     }
                 },
