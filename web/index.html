@@ -92,6 +92,11 @@
                         <div class="controls">
                             <input type="text" id="inputGamecode" placeholder="Enter the Game Code" required>
                         </div>
+                    </div><div class="control-group">
+                        <label class="control-label" for="inputGamenotesStart">Game Notes</label>
+                        <div class="controls">
+                            <textarea id="inputGamenotesStart" rows="3"></textarea>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -114,28 +119,48 @@
                             <input id="inputTime" type="text" class="input-small">
                         </div>
                     </div>
-
-                    <div class="control-group">
-                        <label class="control-label" for="inputHits">Hits</label>
-                        <div class="controls">
-                            <input id="inputHits" type="text" class="input-mini">
-                        </div>
-                    </div>
-
-                    <div class="control-group">
-                        <label class="control-label" for="inputMisses">Misses</label>
-                        <div class="controls">
-                            <input id="inputMisses" type="text" class="input-mini">
-                        </div>
-                    </div>
                 </form>
+                <table class="table table-hover table-condensed">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th class="text-error">Target 1</th>
+                            <th class="text-success">Target 2</th>
+                            <th class="text-info">Target 3</th>
+                            <th class="text-error">Target 4</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Hits!</td>
+                            <td>
+                                <input id="t1_hit" type="text" class="input-mini">
+                            </td>
+                            <td>
+                                <input id="t2_hit" type="text" class="input-mini">
+                            </td>
+                            <td>
+                                <input id="t3_hit" type="text" class="input-mini">
+                            </td>
+                            <td>
+                                <input id="t4_hit" type="text" class="input-mini">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
                 <hr>
-                <h2>Score</h2>
+                <h4>Score</h4>
                 <form class="form-horizontal">
                     <div class="control-group">
                         <label class="control-label" for="inputFinalscore">Final Score</label>
                         <div class="controls">
-                            <input type="text" id="inputFinalscore" class="input-small" required>
+                            <input type="text" id="inputFinalscore" class="input-mini" required>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="inputGamenotesEnd">Game Notes</label>
+                        <div class="controls">
+                            <textarea id="inputGamenotesEnd" rows="3"></textarea>
                         </div>
                     </div>
                 </form>
@@ -146,11 +171,91 @@
         </div>
         <script>
             "use strict";
-            var socket= new WebSocket('ws://192.168.3.3:4500');
             
-            socket.onmessage = function(s) {
-                alert('got reply '+ s.data);
+            if (!window.console) {
+                alert('your browser sucks and cannot run this site');
+            }
+            if (!window.WebSocket) {
+                alert('again, your browser sucks and cannot run this awesome site.  we will now spam your browser with alerts.');
+            }
+            //TODO: make socket servers into model
+            var LamarcheServer = {
+                ip: '10.0.0.2',
+                port: '4500',
+                socket: null,
+                connected: false,
+                init: function() {
+                    this.socket = new WebSocket('ws://' + this.ip + ':' + this.port);
+                    this.socket.onopen = this.onOpen;
+                    this.socket.onmessage = this.onMessage;
+                    this.socket.onclose = this.onClose;
+                    this.socket.onerror = this.onError;
+                },
+                onOpen: function() {
+                    console.log('LamarcheServer connected to ' + LamarcheServer.ip + ':' + LamarcheServer.port);
+                    LamarcheServer.connected = true;
+                },
+                onMessage: function(msg) {
+                    console.log('LamarcheServer reply '+ msg.data);
+                },
+                onClose: function() {
+                    console.log('LamarcheServer socket closed... trying to re open...');
+                    LamarcheServer.connected = false;
+                    //LamarcheServer.init();
+                },
+                onError: function() {
+                    console.log('LamarcheServer there was an error');
+                },
+                send: function(model) {
+                    if (this.connected) {
+                        console.log('LamarcheServer sending message');
+                        this.socket.send(JSON.stringify(model));
+                    }
+                    else {
+                        console.log('LamarcheServer not connected so no message sent')
+                    }
+                }
             };
+            var RPiServer = {
+                ip: '10.0.0.5',
+                port: '9998',
+                socket: null,
+                connected: false,
+                init: function() {
+                    this.socket = new WebSocket('ws://' + this.ip + ':' + this.port + '/echo');
+                    this.socket.onopen = this.onOpen;
+                    this.socket.onmessage = this.onMessage;
+                    this.socket.onclose = this.onClose;
+                    this.socket.onerror = this.onError;
+                },
+                onOpen: function() {
+                    console.log('RPiServer connected to ' + RPiServer.ip + ':' + RPiServer.port);
+                    RPiServer.connected = true;
+                },
+                onMessage: function(msg) {
+                    console.log('RPiServer reply '+ msg.data);
+                },
+                onClose: function() {
+                    console.log('RPiServer socket closed... trying to re open...');
+                    RPiServer.connected = false;
+                    //RPiServer.init();
+                },
+                onError: function() {
+                    console.log('RPiServer there was an error');
+                },
+                send: function(model) {
+                    if (this.connected) {
+                        console.log('RPiServer sending message');
+                        this.socket.send(JSON.stringify(model));
+                    }
+                    else {
+                        console.log('RPiServer not connected so no message sent')
+                    }
+                }
+            };
+            
+            LamarcheServer.init();
+            RPiServer.init();
             $(function(){
                 
                 $('#setup').on('click', function() {                    
@@ -180,25 +285,35 @@
                     
                     $('#currteam').text(Sad.currentTeam.get('name'));
                     Sad.Timer.start();
-                    Sad.currentTeam.getCurrentGame().set('start', new Date().getTime());
+                    
+                    var currentGame = Sad.currentTeam.getCurrentGame();
+                    currentGame.set('start', new Date().getTime());
+                    currentGame.set('notes', $('#inputGamenotesStart').val());
                     $('#music')[0].play();
-                    var status = { gameStatus: "start", code: "sqrt(2)" }
-                    socket.send(JSON.stringify(Sad.currentTeam));
+                    
+                    LamarcheServer.send(Sad.currentTeam);
                 });
                 
                 $('#manualdone').on('click', function() {
+                    var currentGame = Sad.currentTeam.getCurrentGame();
                     $('#finalscorewindow').modal();
                     Sad.Timer.stop();
-                    Sad.currentTeam.getCurrentGame().set('end', new Date().getTime());
+                    currentGame.set('end', new Date().getTime());
                     $("#music")[0].pause();
                     
-                    //$("#music")[0].currentTime = 0;
+                    $("#music")[0].currentTime = 0;
                     
-                    Sad.currentTeam.getCurrentGame().set('endDisplay', $('#timer').text());
+                    currentGame.set('endDisplay', $('#timer').text());
                     
                     $('#resultTeamName').html(Sad.currentTeam.get('name'));
                     
-                    $('#inputTime').val(Sad.currentTeam.getCurrentGame().get('endDisplay'));
+                    $('#inputTime').val(currentGame.get('endDisplay'));
+                    $('#inputFinalscore').val(currentGame.get('score'));
+                    $('#inputGamenotesEnd').val(currentGame.get('notes'));
+                    
+                    _.each(currentGame.get('targets'), function(target){
+                        $('#t' + target.get('id') + '_hit').val(target.get('hits'));
+                    });
                     //$('#inputHits').val(Sad.currentTeam.hits);
                     //$('#inputMisses').val(Sad.currentTeam.misses);
                 });
@@ -209,7 +324,18 @@
                     $('#welcome').slideDown('slow');
                     $('#finalscorewindow').modal('hide');
                     
-                    socket.send(JSON.stringify(Sad.currentTeam));
+                    var currentGame = Sad.currentTeam.getCurrentGame();
+                    _.each(currentGame.get('targets'), function(target){
+                        var adjustedHits = $('#t' + target.get('id') + '_hit').val();
+                        target.set('hits', parseInt(adjustedHits));
+                    });
+                    
+                    var adjustedScore = $('#inputFinalscore').val();
+                    currentGame.set('score', parseInt(adjustedScore));
+                    
+                    currentGame.set('notes', $('#inputGamenotesEnd').val());
+                    
+                    LamarcheServer.send(Sad.currentTeam);
                 });
             });
             
@@ -228,8 +354,7 @@
                     defaults: {
                         id: 0,
                         status: null,
-                        hits: 0,
-                        misses: 0
+                        hits: 0
                     }
                 }),
                 currentTeam: null,
@@ -243,6 +368,7 @@
                     });
                     
                     if (added) {
+                        team.set('games', new Array());
                         this.teams.push(team);
                     }
                     return added;
@@ -262,6 +388,7 @@
                     defaults: {
                         name: null,
                         ip: null,
+                        score: 0,
                         games: []
                     },
                     addNewGame: function (code) {
@@ -281,10 +408,12 @@
                 Game: Backbone.Model.extend({
                     defaults: {
                         code: null,
-                        start: null,
-                        end: null,
+                        start: 0,
+                        end: 0,
                         endDisplay: '0:00:00',
-                        targets: null
+                        targets: null,
+                        score: 0,
+                        notes: null
                     },
                     setTargets: function () {
                         this.set('targets', new Array());
