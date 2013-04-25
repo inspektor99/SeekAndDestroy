@@ -5,8 +5,8 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <link href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css" rel="stylesheet">
 
-        <script src="libs/stomp.js"></script>
-        <script src="http://cdn.sockjs.org/sockjs-0.3.min.js"></script>
+        <!--<script src="libs/stomp.js"></script>-->
+        <!--<script src="http://cdn.sockjs.org/sockjs-0.3.min.js"></script>-->
         <script src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
         <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
         <script src="http://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
@@ -124,10 +124,10 @@
                     <thead>
                         <tr>
                             <th></th>
-                            <th class="text-error">Target 1</th>
-                            <th class="text-success">Target 2</th>
-                            <th class="text-info">Target 3</th>
-                            <th class="text-error">Target 4</th>
+                            <th id="t1_type">Target 1</th>
+                            <th id="t2_type">Target 2</th>
+                            <th id="t3_type">Target 3</th>
+                            <th id="t4_type">Target 4</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -176,10 +176,10 @@
                 alert('your browser sucks and cannot run this site');
             }
             if (!window.WebSocket) {
-                alert('again, your browser sucks and cannot run this awesome site.  we will now spam your browser with alerts.');
+                alert('again, your browser sucks and cannot run this awesome site.  we will now spam your browser with errors. prepare to die.');
             }
             //TODO: make socket servers into model
-            var LamarcheServer = {
+            var ClassServer = {
                 ip: '10.0.0.2',
                 port: '4500',
                 socket: null,
@@ -192,30 +192,31 @@
                     this.socket.onerror = this.onError;
                 },
                 onOpen: function() {
-                    console.log('LamarcheServer connected to ' + LamarcheServer.ip + ':' + LamarcheServer.port);
-                    LamarcheServer.connected = true;
+                    console.log('ClassServer connected to ' + ClassServer.ip + ':' + ClassServer.port);
+                    ClassServer.connected = true;
                 },
                 onMessage: function(msg) {
-                    console.log('LamarcheServer reply '+ msg.data);
+                    console.log('ClassServer reply '+ msg.data);
                 },
                 onClose: function() {
-                    console.log('LamarcheServer socket closed... trying to re open...');
-                    LamarcheServer.connected = false;
-                    //LamarcheServer.init();
+                    console.log('ClassServer socket closed... trying to re open...');
+                    ClassServer.connected = false;
+                    //ClassServer.init();
                 },
                 onError: function() {
-                    console.log('LamarcheServer there was an error');
+                    console.log('ClassServer there was an error');
                 },
                 send: function(model) {
                     if (this.connected) {
-                        console.log('LamarcheServer sending message');
+                        console.log('ClassServer sending message');
                         this.socket.send(JSON.stringify(model));
                     }
                     else {
-                        console.log('LamarcheServer not connected so no message sent')
+                        console.log('ClassServer not connected so no message sent')
                     }
                 }
             };
+            
             var RPiServer = {
                 ip: '10.0.0.5',
                 port: '9998',
@@ -254,7 +255,7 @@
                 }
             };
             
-            LamarcheServer.init();
+            ClassServer.init();
             RPiServer.init();
             $(function(){
                 
@@ -291,7 +292,7 @@
                     currentGame.set('notes', $('#inputGamenotesStart').val());
                     $('#music')[0].play();
                     
-                    LamarcheServer.send(Sad.currentTeam);
+                    ClassServer.send(Sad.currentTeam);
                 });
                 
                 $('#manualdone').on('click', function() {
@@ -313,6 +314,21 @@
                     
                     _.each(currentGame.get('targets'), function(target){
                         $('#t' + target.get('id') + '_hit').val(target.get('hits'));
+                        var targetTypeElem = $('#t' + target.get('id') + '_type');
+                        targetTypeElem.removeClass('text-error');
+                        targetTypeElem.removeClass('text-success');
+                        targetTypeElem.removeClass('text-info');
+                        
+                        var targetType = target.get('status');
+                        if (targetType === Sad.TargetStatusType.NEUTRAL) {
+                            targetTypeElem.addClass('text-info');
+                        }
+                        else if (targetType === Sad.TargetStatusType.GOOD) {
+                            targetTypeElem.addClass('text-success');
+                        }
+                        else if (targetType === Sad.TargetStatusType.EVIL) {
+                            targetTypeElem.addClass('text-error');
+                        }
                     });
                     //$('#inputHits').val(Sad.currentTeam.hits);
                     //$('#inputMisses').val(Sad.currentTeam.misses);
@@ -335,7 +351,7 @@
                     
                     currentGame.set('notes', $('#inputGamenotesEnd').val());
                     
-                    LamarcheServer.send(Sad.currentTeam);
+                    ClassServer.send(Sad.currentTeam);
                 });
             });
             
