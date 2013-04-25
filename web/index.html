@@ -46,19 +46,19 @@
             <div class="row">
                 <div class="span3">
                     <h1>Target 1</h1>
-                    <span class="badge">0</span>
+                    <span id="t1_counter" class="badge">0</span>
                 </div>
                 <div class="span3">
                     <h1>Target 2</h1>
-                    <span class="badge badge-success">0</span>
+                    <span id="t2_counter" class="badge badge-success">0</span>
                 </div>
                 <div class="span3">
                     <h1>Target 3</h1>
-                    <span class="badge badge-important">0</span>
+                    <span id="t3_counter" class="badge badge-important">0</span>
                 </div>
                 <div class="span3">
                     <h1>Target 4</h1>
-                    <span class="badge badge-success">0</span>
+                    <span id="t4_counter" class="badge badge-success">0</span>
                 </div>
             </div>
             <hr>
@@ -290,6 +290,25 @@
                     var currentGame = Sad.currentTeam.getCurrentGame();
                     currentGame.set('start', new Date().getTime());
                     currentGame.set('notes', $('#inputGamenotesStart').val());
+                    
+                    _.each(currentGame.get('targets'), function (target){
+                        var counter = $('#t' + target.get('id') + '_counter');
+                        
+                        counter.removeClass('badge-info');
+                        counter.removeClass('badge-success');
+                        counter.removeClass('badge-important');
+                        
+                        var targetType = target.get('status');
+                        if (targetType === Sad.TargetStatusType.NEUTRAL) {
+                            counter.addClass('badge-info');
+                        }
+                        else if (targetType === Sad.TargetStatusType.GOOD) {
+                            counter.addClass('badge-success');
+                        }
+                        else if (targetType === Sad.TargetStatusType.EVIL) {
+                            counter.addClass('badge-important');
+                        }
+                    });
                     $('#music')[0].play();
                     
                     ClassServer.send(Sad.currentTeam);
