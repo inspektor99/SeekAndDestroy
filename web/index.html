@@ -20,7 +20,7 @@
             <div class="navbar-inner">
                 <a class="brand" href="#">Seek and Destroy</a>
                 <div class="pull-left">
-                    <a href="#" id="viewStats" class="btn" title="click to reset connection">View Stats</a>
+                    <a href="#" id="viewStats" class="btn">View Stats</a>
                 </div>
                 <div class="pull-right">
                     <a href="#" id="statusLaptop" class="btn" title="click to reset connection">Server</a>
@@ -192,7 +192,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        
+
                     </tbody>
                 </table>
             </div>
@@ -234,7 +234,7 @@
                     socket.onmessage = function(msg) {
                         console.log(self.get('ip') + ' reply '+ msg.data);
                         if (self.get('respCallback')) {
-                            self.get('respCallback')();
+                            self.get('respCallback')(JSON.parse(msg.data));
                             self.set('respCallback', null);
                         }
                     };
@@ -303,56 +303,60 @@
                 $('#setup').on('click', function() {                    
                     //socket.send('test');
                     $('#setupwindow').modal();
+                    
+                    var setupCallback = function (games) {
+                        console.log(games);
+                    };
+                    RPiServer.send({getgames: null}, setupCallback);
                 });
                 
                 //TODO: wait till pi says it's ready
                 $('#begin').on('click', function() {
                     
-                    $('#timer').removeClass('text-warning');
-                    $('#timer').removeClass('text-error');
-                    $('#timer').addClass('text-info');
+                    var beginCallback = function(targets) {
+                        
+                        $('#timer').removeClass('text-warning');
+                        $('#timer').removeClass('text-error');
+                        $('#timer').addClass('text-info');
                             
-                    $('#setupwindow').modal('hide');
-                    $('#welcome').hide();
-                    $('#scoreboard').slideDown('slow');
+                        $('#setupwindow').modal('hide');
+                        $('#welcome').hide();
+                        $('#scoreboard').slideDown('slow');
                     
-                    var team = new Sad.Team();
-                    team.set('name', $('#inputTeamname').val());
-                    team.set('ip', $('#inputTeamIP').val());
+                        var team = new Sad.Team();
+                        team.set('name', $('#inputTeamname').val());
+                        team.set('ip', $('#inputTeamIP').val());
                     
-                    Sad.addTeam(team);
-                    team = Sad.setCurrentTeam(team.get('name'));
+                        Sad.addTeam(team);
+                        team = Sad.setCurrentTeam(team.get('name'));
                     
-                    team.addNewGame($('#inputGamecode').val());
+                        team.addNewGame($('#inputGamecode').val(), targets);
                     
-                    $('#currteam').text(Sad.currentTeam.get('name'));
-                    Sad.Timer.start();
+                        $('#currteam').text(Sad.currentTeam.get('name'));
+                        Sad.Timer.start();
                     
-                    var currentGame = Sad.currentTeam.getCurrentGame();
-                    currentGame.set('start', new Date().getTime());
-                    currentGame.set('notes', $('#inputGamenotesStart').val());
-                    
-                    _.each(currentGame.get('targets'), function (target){
-                        var counter = $('#t' + target.get('id') + '_counter');
-                        
-                        counter.removeClass('badge-info');
-                        counter.removeClass('badge-success');
-                        counter.removeClass('badge-important');
-                        
-                        var targetType = target.get('status');
-                        if (targetType === Sad.TargetStatusType.NEUTRAL) {
-                            counter.addClass('badge-info');
-                        }
-                        else if (targetType === Sad.TargetStatusType.GOOD) {
-                            counter.addClass('badge-success');
-                        }
-                        else if (targetType === Sad.TargetStatusType.EVIL) {
-                            counter.addClass('badge-important');
-                        }
-                    });
-                    $('#music')[0].play();
-                    
-                    ClassServer.send(Sad.currentTeam);
+                        var currentGame = Sad.currentTeam.getCurrentGame();
+                        currentGame.set('start', new Date().getTime());
+                        currentGame.set('notes', $('#inputGamenotesStart').val());
+
+                        _.each(currentGame.get('targets'), function (target){
+                            var counter = $('#t' + target.get('id') + '_counter');
+                            var status = target.get('status');
+                            
+                            counter.removeClass();
+                            if (status === 1) {
+                                counter.addClass('badge badge-success');
+                            }
+                            else {
+                                counter.addClass('badge badge-important');
+                            }
+                        });
+                        $('#music')[0].play();
+                    }
+
+                    RPiServer.send({startgame: $('#inputGamecode').val()}, beginCallback);
+
+                    ClassServer.send(Sad.currentTeam, beginCallback);
                     
                     return false;
                 });
@@ -377,18 +381,14 @@
                     _.each(currentGame.get('targets'), function(target){
                         $('#t' + target.get('id') + '_hit').val(target.get('hits'));
                         var targetTypeElem = $('#t' + target.get('id') + '_type');
-                        targetTypeElem.removeClass('text-error');
-                        targetTypeElem.removeClass('text-success');
-                        targetTypeElem.removeClass('text-info');
+                        targetTypeElem.removeClass();
                         
-                        var targetType = target.get('status');
-                        if (targetType === Sad.TargetStatusType.NEUTRAL) {
-                            targetTypeElem.addClass('text-info');
-                        }
-                        else if (targetType === Sad.TargetStatusType.GOOD) {
+                        var status = target.get('status');
+                        
+                        if (status === 1) {
                             targetTypeElem.addClass('text-success');
                         }
-                        else if (targetType === Sad.TargetStatusType.EVIL) {
+                        else {
                             targetTypeElem.addClass('text-error');
                         }
                     });
@@ -427,11 +427,6 @@
                 TIME_WARNING: 6000,
                 TIME_DANGER: 9000,
                 TIME_LIMIT: 12000,
-                TargetStatusType: {
-                    GOOD: 0,
-                    EVIL: 1,
-                    NEUTRAL: 2
-                },
                 loadStats: function (statTable) {
                     var i = 0, len = this.teams.length;
                     $('tbody', statTable).html('');
@@ -443,7 +438,7 @@
                 Target: Backbone.Model.extend({
                     defaults: {
                         id: 0,
-                        status: null,
+                        status: 0,
                         hits: 0
                     }
                 }),
@@ -481,11 +476,11 @@
                         score: 0,
                         games: []
                     },
-                    addNewGame: function (code) {
+                    addNewGame: function (code, targets) {
                         var game = new Sad.Game();
                         
                         game.set('code', code);
-                        game.setTargets();
+                        game.setTargets(targets);
                         
                         this.get('games').push(game);
                         
@@ -505,13 +500,12 @@
                         score: 0,
                         notes: null
                     },
-                    setTargets: function () {
+                    setTargets: function (targets) {
                         this.set('targets', new Array());
                         var i = 0;
-                        for (i = 0; i < Sad.TARGET_COUNT; i++) {
+                        for (i = 0; i < targets.length; i++) {
                             var target = new Sad.Target();
-                            target.set('id', i + 1);
-                            target.set('status', Sad.TargetStatusType.NEUTRAL);
+                            target.set(targets[i]);
                             this.get('targets').push(target);
                         }
                     }
