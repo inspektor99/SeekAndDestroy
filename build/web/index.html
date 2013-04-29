@@ -7,7 +7,7 @@
 
         <!--<script src="libs/stomp.js"></script>-->
         <!--<script src="http://cdn.sockjs.org/sockjs-0.3.min.js"></script>-->
-        <script src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+        <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
         <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
         <script src="http://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
         <script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>
@@ -16,9 +16,16 @@
         <audio id="music">
             <source src="media/sad.mp3" type="audio/mpeg">
         </audio>
-        <div class="navbar navbar-inverse">
+        <div class="navbar navbar-inverse navbar-static-top">
             <div class="navbar-inner">
                 <a class="brand" href="#">Seek and Destroy</a>
+                <div class="pull-left">
+                    <a href="#" id="viewStats" class="btn" title="click to reset connection">View Stats</a>
+                </div>
+                <div class="pull-right">
+                    <a href="#" id="statusLaptop" class="btn" title="click to reset connection">Server</a>
+                    <a href="#" id="statusPi" class="btn" title="click to reset connection">Rasp Pi</a>
+                </div>
             </div>
         </div>
         <div id="welcome" class="hero-unit">
@@ -169,6 +176,27 @@
                 <a href="#" id="finish" class="btn btn-primary">Finish!</a>
             </div>
         </div>
+        <div id="statswindow" class="modal hide fade">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h3>Statistics</h3>
+            </div>
+            <div class="modal-body">
+                <table id="statsTable" class="table table-hover table-condensed">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Team</th>
+                            <th>Games</th>
+                            <th>Avg. Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                    </tbody>
+                </table>
+            </div>
+        </div>
         <script>
             "use strict";
             
@@ -178,86 +206,99 @@
             if (!window.WebSocket) {
                 alert('again, your browser sucks and cannot run this awesome site.  we will now spam your browser with errors. prepare to die.');
             }
-            //TODO: make socket servers into model
-            var ClassServer = {
-                ip: '10.0.0.2',
-                port: '4500',
-                socket: null,
-                connected: false,
+            
+            var SockServer = Backbone.Model.extend({
+                defaults: {
+                    ip: '10.0.0.6',
+                    port: '4500',
+                    socket: null,
+                    connected: false,
+                    statusButton: null,
+                    respCallback: null,
+                    uri: ''
+                },
                 init: function() {
-                    this.socket = new WebSocket('ws://' + this.ip + ':' + this.port);
-                    this.socket.onopen = this.onOpen;
-                    this.socket.onmessage = this.onMessage;
-                    this.socket.onclose = this.onClose;
-                    this.socket.onerror = this.onError;
+                    this.get('statusButton').removeClass();
+                    this.get('statusButton').addClass('btn btn-warning');
+                    
+                    var socket = new WebSocket('ws://' + this.get('ip') + ':' + this.get('port') + '/' + this.get('uri'));
+                    
+                    var self = this;
+                    //gotta do ws events inline to ensure backbone model scope
+                    socket.onopen = function() {
+                        self.get('statusButton').removeClass();
+                        self.get('statusButton').addClass('btn btn-success');
+                        console.log('connected to ' + self.get('ip') + ':' + self.get('port'));
+                        self.set('connected', true);
+                    };
+                    socket.onmessage = function(msg) {
+                        console.log(self.get('ip') + ' reply '+ msg.data);
+                        if (self.get('respCallback')) {
+                            self.get('respCallback')();
+                            self.set('respCallback', null);
+                        }
+                    };
+                    socket.onclose = function() {
+                        self.get('statusButton').removeClass();
+                        self.get('statusButton').addClass('btn btn-danger');
+                        console.log(self.get('ip') + ' socket closed.');
+                        self.set('connected', false);
+                        //this.init();
+                    };
+                    socket.onerror = function(err) {
+                        console.log(self.get('ip') + ' there was an error');
+                        console.log(err);
+                    };
+                    
+                    this.set('socket', socket);
                 },
-                onOpen: function() {
-                    console.log('ClassServer connected to ' + ClassServer.ip + ':' + ClassServer.port);
-                    ClassServer.connected = true;
-                },
-                onMessage: function(msg) {
-                    console.log('ClassServer reply '+ msg.data);
-                },
-                onClose: function() {
-                    console.log('ClassServer socket closed... trying to re open...');
-                    ClassServer.connected = false;
-                    //ClassServer.init();
-                },
-                onError: function() {
-                    console.log('ClassServer there was an error');
-                },
-                send: function(model) {
-                    if (this.connected) {
-                        console.log('ClassServer sending message');
-                        this.socket.send(JSON.stringify(model));
+                send: function(model, respCallback) {
+                    if (this.get('connected')) {
+                        console.log(this.get('ip') + ' sending message');
+                        this.set('respCallback', respCallback);
+                        this.get('socket').send(JSON.stringify(model));
                     }
                     else {
-                        console.log('ClassServer not connected so no message sent')
+                        console.log(this.get('ip') + ' not connected so no message sent')
                     }
                 }
-            };
+            });
+            var ClassServer = new SockServer();
+            var RPiServer = new SockServer();
             
-            var RPiServer = {
-                ip: '10.0.0.5',
-                port: '9998',
-                socket: null,
-                connected: false,
-                init: function() {
-                    this.socket = new WebSocket('ws://' + this.ip + ':' + this.port + '/echo');
-                    this.socket.onopen = this.onOpen;
-                    this.socket.onmessage = this.onMessage;
-                    this.socket.onclose = this.onClose;
-                    this.socket.onerror = this.onError;
-                },
-                onOpen: function() {
-                    console.log('RPiServer connected to ' + RPiServer.ip + ':' + RPiServer.port);
-                    RPiServer.connected = true;
-                },
-                onMessage: function(msg) {
-                    console.log('RPiServer reply '+ msg.data);
-                },
-                onClose: function() {
-                    console.log('RPiServer socket closed... trying to re open...');
-                    RPiServer.connected = false;
-                    //RPiServer.init();
-                },
-                onError: function() {
-                    console.log('RPiServer there was an error');
-                },
-                send: function(model) {
-                    if (this.connected) {
-                        console.log('RPiServer sending message');
-                        this.socket.send(JSON.stringify(model));
-                    }
-                    else {
-                        console.log('RPiServer not connected so no message sent')
-                    }
-                }
-            };
-            
-            ClassServer.init();
-            RPiServer.init();
             $(function(){
+                ClassServer.set({ip: '10.0.0.2', port: '4500', statusButton: $('#statusLaptop'), uri: ''});
+                ClassServer.init();
+
+                RPiServer.set({ip: '10.0.0.6', port: '4500', statusButton: $('#statusPi'), uri: 'ws'});
+                RPiServer.init();  
+                
+                $('#statusLaptop').tooltip({placement: 'bottom'});
+                $('#statusPi').tooltip({placement: 'bottom'});
+                $('#statusLaptop').on('click', function(e) {  
+                    ClassServer.init();
+                    
+                    return false;
+                });
+                $('#statusPi').on('click', function(e) {  
+                    RPiServer.init();
+                    
+                    return false;
+                });
+                $('#viewStats').on('click', function() {                    
+                    //socket.send('test');
+                    $('#statswindow').modal();
+                    var statsTable = $('#statsTable');
+                    if (Sad.teams.length === 0) {
+                        statsTable.hide();
+                    }
+                    else {
+                        statsTable.show();
+                        Sad.loadStats(statsTable);
+                    }
+                    
+                    return false;
+                });
                 
                 $('#setup').on('click', function() {                    
                     //socket.send('test');
@@ -312,6 +353,8 @@
                     $('#music')[0].play();
                     
                     ClassServer.send(Sad.currentTeam);
+                    
+                    return false;
                 });
                 
                 $('#manualdone').on('click', function() {
@@ -351,6 +394,8 @@
                     });
                     //$('#inputHits').val(Sad.currentTeam.hits);
                     //$('#inputMisses').val(Sad.currentTeam.misses);
+                    
+                    return false;
                 });
                 
                 $('#finish').on('click', function() {
@@ -371,6 +416,8 @@
                     currentGame.set('notes', $('#inputGamenotesEnd').val());
                     
                     ClassServer.send(Sad.currentTeam);
+                    
+                    return false;
                 });
             });
             
@@ -384,6 +431,14 @@
                     GOOD: 0,
                     EVIL: 1,
                     NEUTRAL: 2
+                },
+                loadStats: function (statTable) {
+                    var i = 0, len = this.teams.length;
+                    $('tbody', statTable).html('');
+                    for (i = 0; i < len; i++) {
+                        var teamJson = this.teams[i].toJSON();
+                        $('tbody', statTable).append('<tr><td></td><td>' + teamJson.name + '</td><td>' + teamJson.games.length + '</td><td></td></tr>')
+                    }
                 },
                 Target: Backbone.Model.extend({
                     defaults: {
