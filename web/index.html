@@ -11,10 +11,33 @@
         <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
         <script src="http://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
         <script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>
+        <style>
+            .badge {
+                height: 100px;
+                width: 100px;
+                padding: 0;   
+                -webkit-border-radius: 50px;
+                -moz-border-radius: 50px;
+                border-radius: 50px;
+                text-align: center;
+            }
+            .badge > span {
+                display: inline-block;
+                position: relative;
+                top: 42px;
+                font-size: 48px;
+            }
+            .target-row {
+                text-align: center;
+            }
+        </style>
     </head>
     <body>
         <audio id="music">
             <source src="media/sad.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="bomb">
+            <source src="media/bomb.mp3" type="audio/mpeg">
         </audio>
         <div class="navbar navbar-inverse navbar-static-top">
             <div class="navbar-inner">
@@ -50,22 +73,22 @@
                 </div>
             </div>
             <hr>
-            <div class="row">
+            <div class="row target-row">
                 <div class="span3">
                     <h1>Target 1</h1>
-                    <span id="t1_counter" class="badge">0</span>
+                    <span id="t1_counter" class="badge"><span>x</span></span>
                 </div>
                 <div class="span3">
                     <h1>Target 2</h1>
-                    <span id="t2_counter" class="badge badge-success">0</span>
+                    <span id="t2_counter" class="badge"><span>x</span></span>
                 </div>
                 <div class="span3">
                     <h1>Target 3</h1>
-                    <span id="t3_counter" class="badge badge-important">0</span>
+                    <span id="t3_counter" class="badge"><span>x</span></span>
                 </div>
                 <div class="span3">
                     <h1>Target 4</h1>
-                    <span id="t4_counter" class="badge badge-success">0</span>
+                    <span id="t4_counter" class="badge"><span>x</span></span>
                 </div>
             </div>
             <hr>
@@ -91,7 +114,7 @@
                     <div class="control-group">
                         <label class="control-label" for="inputTeamIP">Team IP Address</label>
                         <div class="controls">
-                            <input type="text" id="inputTeamIP" placeholder="###.###.###.###" required>
+                            <input type="text" id="inputTeamIP" placeholder="###.###.###.###" required value="10.0.0.2">
                         </div>
                     </div>
                     <div class="control-group">
@@ -131,10 +154,10 @@
                     <thead>
                         <tr>
                             <th></th>
-                            <th id="t1_type">Target 1</th>
-                            <th id="t2_type">Target 2</th>
-                            <th id="t3_type">Target 3</th>
-                            <th id="t4_type">Target 4</th>
+                            <th id="t1_type" class="th-target">Target 1</th>
+                            <th id="t2_type" class="th-target">Target 2</th>
+                            <th id="t3_type" class="th-target">Target 3</th>
+                            <th id="t4_type" class="th-target">Target 4</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -217,7 +240,11 @@
                     respCallback: null,
                     uri: ''
                 },
-                init: function() {
+                init: function(connectCallback) {
+                    if (!this.get('statusButton')) {
+                        console.log('no button to update so assuming no connection');
+                        return;
+                    }
                     this.get('statusButton').removeClass();
                     this.get('statusButton').addClass('btn btn-warning');
                     
@@ -230,11 +257,22 @@
                         self.get('statusButton').addClass('btn btn-success');
                         console.log('connected to ' + self.get('ip') + ':' + self.get('port'));
                         self.set('connected', true);
+                        
+                        if (connectCallback) {
+                            connectCallback();
+                        }
                     };
                     socket.onmessage = function(msg) {
-                        console.log(self.get('ip') + ' reply '+ msg.data);
+                        console.log(self.get('ip') + ' message '+ msg.data);
+                        var jsonResp = JSON.parse(msg.data);
+                        
+                        //if the game is running, only message that comes across is target hit.
+                        if (Sad.Timer.isRunning()){
+                            Sad.playBomb();
+                            Sad.updateTargets(jsonResp);
+                        }
                         if (self.get('respCallback')) {
-                            self.get('respCallback')(JSON.parse(msg.data));
+                            self.get('respCallback')(jsonResp);
                             self.set('respCallback', null);
                         }
                     };
@@ -254,9 +292,11 @@
                 },
                 send: function(model, respCallback) {
                     if (this.get('connected')) {
-                        console.log(this.get('ip') + ' sending message');
                         this.set('respCallback', respCallback);
-                        this.get('socket').send(JSON.stringify(model));
+                        
+                        var jsonToSend = JSON.stringify(model);
+                        console.log(this.get('ip') + ' sending message\n' + jsonToSend)
+                        this.get('socket').send(jsonToSend);
                     }
                     else {
                         console.log(this.get('ip') + ' not connected so no message sent')
@@ -267,9 +307,6 @@
             var RPiServer = new SockServer();
             
             $(function(){
-                ClassServer.set({ip: '10.0.0.2', port: '4500', statusButton: $('#statusLaptop'), uri: ''});
-                ClassServer.init();
-
                 RPiServer.set({ip: '10.0.0.6', port: '4500', statusButton: $('#statusPi'), uri: 'ws'});
                 RPiServer.init();  
                 
@@ -318,11 +355,7 @@
                         $('#timer').removeClass('text-warning');
                         $('#timer').removeClass('text-error');
                         $('#timer').addClass('text-info');
-                            
-                        $('#setupwindow').modal('hide');
-                        $('#welcome').hide();
-                        $('#scoreboard').slideDown('slow');
-                    
+
                         var team = new Sad.Team();
                         team.set('name', $('#inputTeamname').val());
                         team.set('ip', $('#inputTeamIP').val());
@@ -333,31 +366,31 @@
                         team.addNewGame($('#inputGamecode').val(), targets);
                     
                         $('#currteam').text(Sad.currentTeam.get('name'));
-                        Sad.Timer.start();
+                        
                     
                         var currentGame = Sad.currentTeam.getCurrentGame();
-                        currentGame.set('start', new Date().getTime());
+                        
                         currentGame.set('notes', $('#inputGamenotesStart').val());
-
-                        _.each(currentGame.get('targets'), function (target){
-                            var counter = $('#t' + target.get('id') + '_counter');
-                            var status = target.get('status');
-                            
-                            counter.removeClass();
-                            if (status === 1) {
-                                counter.addClass('badge badge-success');
-                            }
-                            else {
-                                counter.addClass('badge badge-important');
-                            }
-                        });
-                        $('#music')[0].play();
+                        
+                        Sad.updateTargets(targets);
+                        
+                        currentGame.set('start', new Date().getTime());
+                        ClassServer.set({ip: team.get('ip'), port: '4500', statusButton: $('#statusLaptop'), uri: ''});
+                        ClassServer.init(function() {
+                            $('#setupwindow').modal('hide');
+                            $('#welcome').hide();
+                            $('#scoreboard').slideDown('slow');
+                        
+                            //send message and start timer signaling game start
+                            ClassServer.send(Sad.currentTeam);
+                            Sad.Timer.start();
+                            $('#music')[0].volume = 0.5; 
+                            $('#music')[0].play(); 
+                        });                 
                     }
 
                     RPiServer.send({startgame: $('#inputGamecode').val()}, beginCallback);
 
-                    ClassServer.send(Sad.currentTeam, beginCallback);
-                    
                     return false;
                 });
                 
@@ -378,8 +411,10 @@
                     $('#inputFinalscore').val(currentGame.get('score'));
                     $('#inputGamenotesEnd').val(currentGame.get('notes'));
                     
+                    $('#t1_type, #t2_type, #t3_type, #t4_type').removeClass();
+                    $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
                     _.each(currentGame.get('targets'), function(target){
-                        $('#t' + target.get('id') + '_hit').val(target.get('hits'));
+                        $('#t' + target.get('id') + '_hit').val(target.get('hit'));
                         var targetTypeElem = $('#t' + target.get('id') + '_type');
                         targetTypeElem.removeClass();
                         
@@ -388,12 +423,13 @@
                         if (status === 1) {
                             targetTypeElem.addClass('text-success');
                         }
-                        else {
+                        else if (status === 0) {
                             targetTypeElem.addClass('text-error');
                         }
+                        else if (status === 2) {
+                            targetTypeElem.addClass('muted');
+                        }
                     });
-                    //$('#inputHits').val(Sad.currentTeam.hits);
-                    //$('#inputMisses').val(Sad.currentTeam.misses);
                     
                     return false;
                 });
@@ -407,7 +443,7 @@
                     var currentGame = Sad.currentTeam.getCurrentGame();
                     _.each(currentGame.get('targets'), function(target){
                         var adjustedHits = $('#t' + target.get('id') + '_hit').val();
-                        target.set('hits', parseInt(adjustedHits));
+                        target.set('hit', parseInt(adjustedHits));
                     });
                     
                     var adjustedScore = $('#inputFinalscore').val();
@@ -415,7 +451,7 @@
                     
                     currentGame.set('notes', $('#inputGamenotesEnd').val());
                     
-                    ClassServer.send(Sad.currentTeam);
+                    //ClassServer.send(Sad.currentTeam);
                     
                     return false;
                 });
@@ -427,6 +463,12 @@
                 TIME_WARNING: 6000,
                 TIME_DANGER: 9000,
                 TIME_LIMIT: 12000,
+                playBomb: function() {
+                    $('#bomb')[0].volume = 1; 
+                    $("#bomb")[0].pause();
+                    $("#bomb")[0].currentTime = 0;
+                    $('#bomb')[0].play();
+                },
                 loadStats: function (statTable) {
                     var i = 0, len = this.teams.length;
                     $('tbody', statTable).html('');
@@ -435,11 +477,41 @@
                         $('tbody', statTable).append('<tr><td></td><td>' + teamJson.name + '</td><td>' + teamJson.games.length + '</td><td></td></tr>')
                     }
                 },
+                updateTargets: function (targets) {
+                    var currentGame = Sad.currentTeam.getCurrentGame();
+                    currentGame.setTargets(targets);
+                    
+                    ClassServer.send(Sad.currentTeam);
+                    
+                    //update UI. 
+                    //TODO: make Views and put this in them
+                    $('#t1_counter, #t2_counter, #t3_counter, #t4_counter').removeClass();
+                    $('#t1_counter, #t2_counter, #t3_counter, #t4_counter').addClass('badge');
+                    $('#t1_counter>span, #t2_counter>span, #t3_counter>span, #t4_counter>span').text('X');
+                    _.each(currentGame.get('targets'), function (target){
+                        var counter = $('#t' + target.get('id') + '_counter');
+                        
+                        $('span', counter).text(target.get('hit'));
+                        
+                        var status = target.get('status');
+
+                        counter.removeClass();
+                        if (status === 1) {
+                            counter.addClass('badge badge-success');
+                        }
+                        else if (status === 0) {
+                            counter.addClass('badge badge-important');
+                        }
+                        else if (status === 2) {
+                            counter.addClass('badge');
+                        }
+                    });
+                },
                 Target: Backbone.Model.extend({
                     defaults: {
                         id: 0,
-                        status: 0,
-                        hits: 0
+                        status: 2,
+                        hit: 0
                     }
                 }),
                 currentTeam: null,
@@ -515,7 +587,11 @@
                     id: null,
                     tick: 0,
                     elem: $('#timer')[0],
+                    isRunning: function() {
+                        return this.id !== null;
+                    },
                     start: function() {
+                        //this.reset();
                         this.id = window.setInterval(this.setTick, 10);
                     },
                     setTick: function() {
@@ -547,8 +623,10 @@
                         }
                     },
                     stop: function() {
-                        window.clearInterval(Sad.Timer.id);
-                        Sad.Timer.id = null;
+                        if (Sad.Timer.id !== null) {
+                            window.clearInterval(Sad.Timer.id);
+                            Sad.Timer.id = null; 
+                        }
                     },
                     reset: function() {
                         Sad.Timer.stop();
