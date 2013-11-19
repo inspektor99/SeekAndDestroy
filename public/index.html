@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title></title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <!--<link href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/css/bootstrap-combined.min.css" rel="stylesheet">-->
+        <link href="libs/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+        <!--<script src="libs/stomp.js"></script>-->
+        <!--<script src="http://cdn.sockjs.org/sockjs-0.3.min.js"></script>-->
+        <!--<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>-->
+        <script src="libs/jquery.js"></script>
+        <!--<script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>-->
+        <script src="libs/underscore.js"></script>
+        <!--<script src="http://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>-->
+        <script src="libs/backbone.js"></script>
+        <!--<script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>-->
+        <script src="libs/bootstrap/js/bootstrap.min.js"></script>
+        <style>
+            .badge {
+                height: 100px;
+                width: 100px;
+                padding: 0;   
+                -webkit-border-radius: 50px;
+                -moz-border-radius: 50px;
+                border-radius: 50px;
+                text-align: center;
+            }
+            .badge > span {
+                display: inline-block;
+                position: relative;
+                top: 42px;
+                font-size: 48px;
+            }
+            .target-row {
+                text-align: center;
+            }
+            #finalscorewindow {
+                background-image: url('images/fstamp-red.png');
+                background-repeat: no-repeat;
+                background-position: center center;
+            }
+        </style>
+    </head>
+    <body>
+        <audio id="music">
+            <source src="media/sad.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="bomb">
+            <source src="media/bomb.mp3" type="audio/mpeg">
+        </audio>
+        <div class="navbar navbar-inverse navbar-static-top">
+            <div class="navbar-inner">
+                <a class="brand" href="#">Seek and Destroy</a>
+                <div class="pull-left">
+                    <a href="#" id="viewStats" class="btn">View Stats</a>
+                </div>
+                <div class="pull-right">
+                    <a href="#" id="statusLaptop" class="btn" title="click to reset connection">Server</a>
+                    <a href="#" id="statusPi" class="btn" title="click to reset connection">Rasp Pi</a>
+                </div>
+            </div>
+        </div>
+        <div id="welcome" class="hero-unit">
+            <h1>Seek and Destroy!</h1>
+            <p>Welcome to the Seek and Destroy game.  Good luck and beware of the F-STAMP!</p>
+            <p>
+                <a id="setup" class="btn btn-primary btn-large">
+                    Setup Game
+                </a>
+            </p>
+        </div>
+        <div id="scoreboard" class="container" style="display: none;">
+            <div class="row">
+                <div class="span2">
+                    <h2 id="timer">
+                        0:00:00
+                    </h2>
+                </div>
+                <div class="span10">
+                    <h1 id="currteam">
+                    </h1>
+                </div>
+            </div>
+            <hr>
+            <div class="row target-row">
+                <div class="span3">
+                    <h1>Target 1</h1>
+                    <span id="t1_counter" class="badge"><span>x</span></span>
+                </div>
+                <div class="span3">
+                    <h1>Target 2</h1>
+                    <span id="t2_counter" class="badge"><span>x</span></span>
+                </div>
+                <div class="span3">
+                    <h1>Target 3</h1>
+                    <span id="t3_counter" class="badge"><span>x</span></span>
+                </div>
+                <div class="span3">
+                    <h1>Target 4</h1>
+                    <span id="t4_counter" class="badge"><span>x</span></span>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="span12">
+                    <a href="#" id="manualdone" class="btn btn-primary">RPi Done!</a>
+                </div>
+            </div>
+        </div>
+        <div id="setupwindow" class="modal hide fade">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h3>Game Settings</h3>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal">
+                    <div class="control-group">
+                        <label class="control-label" for="inputTeamname">Team Name</label>
+                        <div class="controls">
+                            <input type="text" id="inputTeamname" placeholder="Your Team Name" required>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="inputTeamIP">Team IP Address</label>
+                        <div class="controls">
+                            <input type="text" id="inputTeamIP" placeholder="###.###.###.###" required value="10.0.0.2">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="inputGamecode">Game Code</label>
+                        <div class="controls">
+                            <input type="text" id="inputGamecode" placeholder="Enter the Game Code" required>
+                        </div>
+                    </div><div class="control-group">
+                        <label class="control-label" for="inputGamenotesStart">Game Notes</label>
+                        <div class="controls">
+                            <textarea id="inputGamenotesStart" rows="3"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="begin" class="btn btn-primary">Let's Begin!</a>
+            </div>
+        </div>
+        <div id="finalscorewindow" class="modal hide fade">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h3><span id="resultTeamName"></span>'s Results</h3>
+            </div>
+            <div class="modal-body">
+                <p>aaaaaaaaaaaaaannnnnd.....  <strong>F-STAMP!!!</strong></p>
+
+                <form class="form-horizontal">
+                    <div class="control-group">
+                        <label class="control-label" for="inputTime">End Time</label>
+                        <div class="controls">
+                            <input id="inputTime" type="text" class="input-small">
+                        </div>
+                    </div>
+                </form>
+                <table class="table table-hover table-condensed">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th id="t1_type" class="th-target">Target 1</th>
+                            <th id="t2_type" class="th-target">Target 2</th>
+                            <th id="t3_type" class="th-target">Target 3</th>
+                            <th id="t4_type" class="th-target">Target 4</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Hits!</td>
+                            <td>
+                                <input id="t1_hit" type="text" class="input-mini">
+                            </td>
+                            <td>
+                                <input id="t2_hit" type="text" class="input-mini">
+                            </td>
+                            <td>
+                                <input id="t3_hit" type="text" class="input-mini">
+                            </td>
+                            <td>
+                                <input id="t4_hit" type="text" class="input-mini">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <hr>
+                <h4>Score</h4>
+                <form class="form-horizontal">
+                    <div class="control-group">
+                        <label class="control-label" for="inputFinalscore">Final Score</label>
+                        <div class="controls">
+                            <input type="text" id="inputFinalscore" class="input-mini" required>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="inputGamenotesEnd">Game Notes</label>
+                        <div class="controls">
+                            <textarea id="inputGamenotesEnd" rows="3"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="finish" class="btn btn-primary">Finish!</a>
+            </div>
+        </div>
+        <div id="statswindow" class="modal hide fade">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h3>Statistics</h3>
+            </div>
+            <div class="modal-body">
+                <table id="statsTable" class="table table-hover table-condensed">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Team</th>
+                            <th>Games</th>
+                            <th>Avg. Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <script>
+            "use strict";
+            
+            if (!window.console) {
+                alert('your browser sucks and cannot run this site');
+            }
+            if (!window.WebSocket) {
+                alert('again, your browser sucks and cannot run this awesome site.  we will now spam your browser with errors. prepare to die.');
+            }
+            
+            var SockServer = Backbone.Model.extend({
+                defaults: {
+                    ip: '10.0.0.6',
+                    port: '4500',
+                    socket: null,
+                    connected: false,
+                    statusButton: null,
+                    respCallback: null,
+                    uri: ''
+                },
+                init: function(connectCallback) {
+                    if (!this.get('statusButton')) {
+                        console.log('no button to update so assuming no connection');
+                        return;
+                    }
+                    this.get('statusButton').removeClass();
+                    this.get('statusButton').addClass('btn btn-warning');
+                    
+                    var socket = new WebSocket('ws://' + this.get('ip') + ':' + this.get('port') + '/' + this.get('uri'));
+                    
+                    var self = this;
+                    //gotta do ws events inline to ensure backbone model scope
+                    socket.onopen = function() {
+                        self.get('statusButton').removeClass();
+                        self.get('statusButton').addClass('btn btn-success');
+                        console.log('connected to ' + self.get('ip') + ':' + self.get('port'));
+                        self.set('connected', true);
+                        
+                        if (connectCallback) {
+                            connectCallback();
+                        }
+                    };
+                    socket.onmessage = function(msg) {
+                        console.log(self.get('ip') + ' message '+ msg.data);
+                        var jsonResp = JSON.parse(msg.data);
+                        
+                        //if the game is running, only message that comes across is target hit.
+                        if (Sad.Timer.isRunning()){
+                            Sad.playBomb();
+                            Sad.updateTargets(jsonResp);
+                        }
+                        if (self.get('respCallback')) {
+                            self.get('respCallback')(jsonResp);
+                            self.set('respCallback', null);
+                        }
+                    };
+                    socket.onclose = function() {
+                        self.get('statusButton').removeClass();
+                        self.get('statusButton').addClass('btn btn-danger');
+                        console.log(self.get('ip') + ' socket closed.');
+                        self.set('connected', false);
+                        //this.init();
+                    };
+                    socket.onerror = function(err) {
+                        console.log(self.get('ip') + ' there was an error');
+                        console.log(err);
+                    };
+                    
+                    this.set('socket', socket);
+                },
+                send: function(model, respCallback) {
+                    if (this.get('connected')) {
+                        this.set('respCallback', respCallback);
+                        
+                        var jsonToSend = JSON.stringify(model);
+                        console.log(this.get('ip') + ' sending message\n' + jsonToSend)
+                        this.get('socket').send(jsonToSend);
+                    }
+                    else {
+                        console.log(this.get('ip') + ' not connected so no message sent')
+                    }
+                }
+            });
+            var ClassServer = new SockServer();
+            var RPiServer = new SockServer();
+            
+            $(function(){
+                RPiServer.set({ip: '10.0.0.6', port: '4500', statusButton: $('#statusPi'), uri: 'ws'});
+                RPiServer.init();  
+                
+                $('#statusLaptop').tooltip({placement: 'bottom'});
+                $('#statusPi').tooltip({placement: 'bottom'});
+                $('#statusLaptop').on('click', function(e) {  
+                    ClassServer.init();
+                    
+                    return false;
+                });
+                $('#statusPi').on('click', function(e) {  
+                    RPiServer.init();
+                    
+                    return false;
+                });
+                $('#viewStats').on('click', function() {                    
+                    //socket.send('test');
+                    $('#statswindow').modal();
+                    var statsTable = $('#statsTable');
+                    if (Sad.teams.length === 0) {
+                        statsTable.hide();
+                    }
+                    else {
+                        statsTable.show();
+                        Sad.loadStats(statsTable);
+                    }
+                    
+                    return false;
+                });
+                
+                $('#setup').on('click', function() {                    
+                    //socket.send('test');
+                    $('#setupwindow').modal();
+                    
+                    var setupCallback = function (games) {
+                        console.log(games);
+                    };
+                    RPiServer.send({getgames: null}, setupCallback);
+                });
+                
+                //TODO: wait till pi says it's ready
+                $('#begin').on('click', function() {
+                    
+                    var beginCallback = function(targets) {
+                        
+                        $('#timer').removeClass('text-warning');
+                        $('#timer').removeClass('text-error');
+                        $('#timer').addClass('text-info');
+
+                        var team = new Sad.Team();
+                        team.set('name', $('#inputTeamname').val());
+                        team.set('ip', $('#inputTeamIP').val());
+                    
+                        Sad.addTeam(team);
+                        team = Sad.setCurrentTeam(team.get('name'));
+                    
+                        team.addNewGame($('#inputGamecode').val(), targets);
+                    
+                        $('#currteam').text(Sad.currentTeam.get('name'));
+                        
+                    
+                        var currentGame = Sad.currentTeam.getCurrentGame();
+                        
+                        currentGame.set('notes', $('#inputGamenotesStart').val());
+                        
+                        Sad.updateTargets(targets);
+                        
+                        currentGame.set('start', new Date().getTime());
+                        ClassServer.set({ip: team.get('ip'), port: '4500', statusButton: $('#statusLaptop'), uri: ''});
+                        ClassServer.init(function() {
+                            $('#setupwindow').modal('hide');
+                            $('#welcome').hide();
+                            $('#scoreboard').slideDown('slow');
+                        
+                            //send message and start timer signaling game start
+                            ClassServer.send(Sad.currentTeam);
+                            Sad.Timer.start();
+                            $('#music')[0].volume = 0.5; 
+                            $('#music')[0].play(); 
+                        });                 
+                    }
+
+                    RPiServer.send({startgame: $('#inputGamecode').val()}, beginCallback);
+
+                    return false;
+                });
+                
+                $('#manualdone').on('click', function() {
+                    var currentGame = Sad.currentTeam.getCurrentGame();
+                    $('#finalscorewindow').modal();
+                    Sad.Timer.stop();
+                    currentGame.set('end', new Date().getTime());
+                    $("#music")[0].pause();
+                    
+                    $("#music")[0].currentTime = 0;
+                    
+                    currentGame.set('endDisplay', $('#timer').text());
+                    
+                    $('#resultTeamName').html(Sad.currentTeam.get('name'));
+                    
+                    $('#inputTime').val(currentGame.get('endDisplay'));
+                    $('#inputFinalscore').val(currentGame.get('score'));
+                    $('#inputGamenotesEnd').val(currentGame.get('notes'));
+                    
+                    $('#t1_type, #t2_type, #t3_type, #t4_type').removeClass();
+                    $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
+                    _.each(currentGame.get('targets'), function(target){
+                        $('#t' + target.get('id') + '_hit').val(target.get('hit'));
+                        var targetTypeElem = $('#t' + target.get('id') + '_type');
+                        targetTypeElem.removeClass();
+                        
+                        var status = target.get('status');
+                        
+                        if (status === 1) {
+                            targetTypeElem.addClass('text-success');
+                        }
+                        else if (status === 0) {
+                            targetTypeElem.addClass('text-error');
+                        }
+                        else if (status === 2) {
+                            targetTypeElem.addClass('muted');
+                        }
+                    });
+                    
+                    return false;
+                });
+                
+                $('#finish').on('click', function() {
+                    Sad.Timer.reset();
+                    $('#scoreboard').hide();
+                    $('#welcome').slideDown('slow');
+                    $('#finalscorewindow').modal('hide');
+                    
+                    var currentGame = Sad.currentTeam.getCurrentGame();
+                    _.each(currentGame.get('targets'), function(target){
+                        var adjustedHits = $('#t' + target.get('id') + '_hit').val();
+                        target.set('hit', parseInt(adjustedHits));
+                    });
+                    
+                    var adjustedScore = $('#inputFinalscore').val();
+                    currentGame.set('score', parseInt(adjustedScore));
+                    
+                    currentGame.set('notes', $('#inputGamenotesEnd').val());
+                    
+                    //ClassServer.send(Sad.currentTeam);
+                    
+                    return false;
+                });
+            });
+            
+            var Sad = {
+                TARGET_COUNT: 4,
+                //in 10 milliseconds.  2 mins
+                TIME_WARNING: 6000,
+                TIME_DANGER: 9000,
+                TIME_LIMIT: 12000,
+                playBomb: function() {
+                    $('#bomb')[0].volume = 1; 
+                    $("#bomb")[0].pause();
+                    $("#bomb")[0].currentTime = 0;
+                    $('#bomb')[0].play();
+                },
+                loadStats: function (statTable) {
+                    var i = 0, len = this.teams.length;
+                    $('tbody', statTable).html('');
+                    for (i = 0; i < len; i++) {
+                        var teamJson = this.teams[i].toJSON();
+                        $('tbody', statTable).append('<tr><td></td><td>' + teamJson.name + '</td><td>' + teamJson.games.length + '</td><td></td></tr>')
+                    }
+                },
+                updateTargets: function (targets) {
+                    var currentGame = Sad.currentTeam.getCurrentGame();
+                    currentGame.setTargets(targets);
+                    
+                    ClassServer.send(Sad.currentTeam);
+                    
+                    //update UI. 
+                    //TODO: make Views and put this in them
+                    $('#t1_counter, #t2_counter, #t3_counter, #t4_counter').removeClass();
+                    $('#t1_counter, #t2_counter, #t3_counter, #t4_counter').addClass('badge');
+                    $('#t1_counter>span, #t2_counter>span, #t3_counter>span, #t4_counter>span').text('X');
+                    _.each(currentGame.get('targets'), function (target){
+                        var counter = $('#t' + target.get('id') + '_counter');
+                        
+                        $('span', counter).text(target.get('hit'));
+                        
+                        var status = target.get('status');
+
+                        counter.removeClass();
+                        if (status === 1) {
+                            counter.addClass('badge badge-success');
+                        }
+                        else if (status === 0) {
+                            counter.addClass('badge badge-important');
+                        }
+                        else if (status === 2) {
+                            counter.addClass('badge');
+                        }
+                    });
+                },
+                Target: Backbone.Model.extend({
+                    defaults: {
+                        id: 0,
+                        status: 2,
+                        hit: 0
+                    }
+                }),
+                currentTeam: null,
+                teams: [],
+                addTeam: function (team) {
+                    var added = true;
+                    _.each(this.teams, function(teamIt) {
+                        if (teamIt.get('name').toLowerCase() == team.get('name').toLowerCase()) {
+                            added = false;
+                        }
+                    });
+                    
+                    if (added) {
+                        team.set('games', new Array());
+                        this.teams.push(team);
+                    }
+                    return added;
+                },
+                setCurrentTeam: function(name) {
+                    var setTeam = null;
+                    _.each(this.teams, function(team) {
+                        if (team.get('name').toLowerCase() === name.toLowerCase()) {
+                            Sad.currentTeam = team;
+                            setTeam = team;
+                        }
+                    });
+                    
+                    return setTeam;
+                },
+                Team: Backbone.Model.extend({
+                    defaults: {
+                        name: null,
+                        ip: null,
+                        score: 0,
+                        games: []
+                    },
+                    addNewGame: function (code, targets) {
+                        var game = new Sad.Game();
+                        
+                        game.set('code', code);
+                        game.setTargets(targets);
+                        
+                        this.get('games').push(game);
+                        
+                        return game;
+                    },
+                    getCurrentGame: function() {
+                        return this.get('games')[this.get('games').length - 1];
+                    }
+                }),
+                Game: Backbone.Model.extend({
+                    defaults: {
+                        code: null,
+                        start: 0,
+                        end: 0,
+                        endDisplay: '0:00:00',
+                        targets: null,
+                        score: 0,
+                        notes: null
+                    },
+                    setTargets: function (targets) {
+                        this.set('targets', new Array());
+                        var i = 0;
+                        for (i = 0; i < targets.length; i++) {
+                            var target = new Sad.Target();
+                            target.set(targets[i]);
+                            this.get('targets').push(target);
+                        }
+                    }
+                }),
+                Timer: {
+                    DEFAULT_DISPLAY: '0:00:000',
+                    id: null,
+                    tick: 0,
+                    elem: $('#timer')[0],
+                    isRunning: function() {
+                        return this.id !== null;
+                    },
+                    start: function() {
+                        //this.reset();
+                        this.id = window.setInterval(this.setTick, 10);
+                    },
+                    setTick: function() {
+                        Sad.Timer.tick++;
+                        
+                        var milli = Sad.Timer.tick % 100;
+                        var seconds = Math.floor(Sad.Timer.tick / 100);
+                        var minutes = Math.floor(seconds / 60);
+
+                        seconds %= 60;
+                        
+                        if (milli < 10) {
+                            milli = '0' + milli.toString();
+                        }
+                        if (seconds < 10) {
+                            seconds = '0' + seconds.toString();
+                        }
+                        Sad.Timer.elem.innerHTML = minutes + ':' + seconds + ':' + milli;
+                        if (Sad.Timer.tick === Sad.TIME_WARNING) {
+                            $('#timer').removeClass('text-info');
+                            $('#timer').addClass('text-warning');
+                        }
+                        if (Sad.Timer.tick === Sad.TIME_DANGER) {
+                            $('#timer').removeClass('text-warning');
+                            $('#timer').addClass('text-error');
+                        }
+                        if (Sad.Timer.tick === Sad.TIME_LIMIT) {
+                            Sad.Timer.stop();
+                        }
+                    },
+                    stop: function() {
+                        if (Sad.Timer.id !== null) {
+                            window.clearInterval(Sad.Timer.id);
+                            Sad.Timer.id = null; 
+                        }
+                    },
+                    reset: function() {
+                        Sad.Timer.stop();
+                        Sad.Timer.tick = 0;
+                        Sad.Timer.elem.innerHTML = Sad.Timer.DEFAULT_DISPLAY;
+                    },
+                    getTick: function() {
+                        return this.tick;
+                    }
+                }
+            };
+        </script>
+    </body>
+</html>
