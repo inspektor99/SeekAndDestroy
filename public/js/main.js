@@ -20,7 +20,7 @@ var Sad = {
 
 var SockServer = Backbone.Model.extend({
     defaults: {
-        ip: '10.0.0.3',
+        ip: '10.0.0.4',
         port: '4500',
         socket: null,
         connected: false,
@@ -95,7 +95,7 @@ var RPiServer = new SockServer();
 
 $(function() {
     RPiServer.set({
-        ip: '10.0.0.3',
+        ip: '10.0.0.4',
         port: '4500',
         statusButton: $('#statusPi'),
         uri: 'ws'
@@ -148,7 +148,6 @@ $(function() {
     $('#begin').on('click', function() {
 
         var beginCallback = function(targets) {
-
             $('#timer').removeClass('text-warning');
             $('#timer').removeClass('text-error');
             $('#timer').addClass('text-info');
@@ -172,13 +171,13 @@ $(function() {
             Sad.updateTargets(targets);
 
             currentGame.set('start', new Date().getTime());
-            ClassServer.set({
-                ip: team.get('ip'),
-                port: '4500',
-                statusButton: $('#statusLaptop'),
-                uri: ''
-            });
-            ClassServer.init(function() {
+            // ClassServer.set({
+            //     ip: team.get('ip'),
+            //     port: '4500',
+            //     statusButton: $('#statusLaptop'),
+            //     uri: ''
+            // });
+            //ClassServer.init(function() {
                 $('#setupwindow').modal('hide');
                 $('#welcome').hide();
                 $('#scoreboard').slideDown('slow');
@@ -188,7 +187,7 @@ $(function() {
                 Sad.Timer.start();
                 $('#music')[0].volume = 0.5;
                 $('#music')[0].play();
-            });
+            //});
         };
 
         RPiServer.send({
@@ -409,7 +408,7 @@ Sad.Timer = {
         }
         if (Sad.Timer.tick === Sad.TIME_DANGER) {
             $('#timer').removeClass('text-warning');
-            $('#timer').addClass('text-error');
+            $('#timer').addClass('text-danger');
         }
         if (Sad.Timer.tick === Sad.TIME_LIMIT) {
             Sad.Timer.stop();

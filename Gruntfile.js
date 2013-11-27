@@ -28,8 +28,10 @@ module.exports = function(grunt) {
         devel: true,
         globals: {
           //SAD globals
-          Badger: true,
-
+          Sad: true,
+          SockServer: true,
+          ClassServer: true,
+          RPiServer: true,
           //library globals
           '_': true,
           Backbone: true
@@ -56,7 +58,7 @@ module.exports = function(grunt) {
       },
       jshint: {
         files: ['public/js/*.js', 'public/!js/min/*.js'],
-        tasks: ['jshint']
+        tasks: ['jshint', 'uglify']
       }
     }
   });
