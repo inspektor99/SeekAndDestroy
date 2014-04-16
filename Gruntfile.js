@@ -6,8 +6,9 @@ module.exports = function(grunt) {
     uglify: {
       options: {
         banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n'
+        //sourceMap: 'public/js/min/seekanddestroy.min.map'
       },
-      build: {
+      files: {
         src: 'public/js/main.js',
         dest: 'public/js/min/<%= pkg.name %>-<%= pkg.version %>.min.js'
       }

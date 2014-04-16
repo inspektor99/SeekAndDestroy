@@ -20,7 +20,7 @@ var Sad = {
 
 var SockServer = Backbone.Model.extend({
     defaults: {
-        ip: '10.0.0.4',
+        ip: '10.0.0.10',
         port: '4500',
         socket: null,
         connected: false,
@@ -37,6 +37,7 @@ var SockServer = Backbone.Model.extend({
         this.get('statusButton').addClass('btn btn-warning');
 
         var socket = new WebSocket('ws://' + this.get('ip') + ':' + this.get('port') + '/' + this.get('uri'));
+        console.log('connecting to :' + 'ws://' + this.get('ip') + ':' + this.get('port') + '/' + this.get('uri'));
 
         var self = this;
         //gotta do ws events inline to ensure backbone model scope
@@ -90,44 +91,48 @@ var SockServer = Backbone.Model.extend({
         }
     }
 });
-var ClassServer = new SockServer();
+var SelfServer = new SockServer();
 var RPiServer = new SockServer();
 
 $(function() {
     RPiServer.set({
-        ip: '10.0.0.4',
+        ip: '10.0.0.10',
         port: '4500',
         statusButton: $('#statusPi'),
         uri: 'ws'
     });
-    RPiServer.init();
+    //RPiServer.init();
 
     $('#statusLaptop').tooltip({
         placement: 'bottom'
     });
+
+    $('#resetAll').tooltip({
+        placement: 'bottom'
+    });
+
     $('#statusPi').tooltip({
         placement: 'bottom'
     });
+    $('#resetAll').on('click', function(e) {
+        $.get('/reset');
+
+        return false;
+    });
     $('#statusLaptop').on('click', function(e) {
-        ClassServer.init();
+        SelfServer.init();
 
         return false;
     });
     $('#statusPi').on('click', function(e) {
+        RPiServer.set({ip: $('#raspPiAddress').val()});
         RPiServer.init();
 
         return false;
     });
-    $('#viewStats').on('click', function() {
+    $('#generalSetup').on('click', function() {
         //socket.send('test');
-        $('#statswindow').modal();
-        var statsTable = $('#statsTable');
-        if (Sad.teams.length === 0) {
-            statsTable.hide();
-        } else {
-            statsTable.show();
-            Sad.loadStats(statsTable);
-        }
+        $('#generalSetupWindow').modal();
 
         return false;
     });
@@ -171,19 +176,19 @@ $(function() {
             Sad.updateTargets(targets);
 
             currentGame.set('start', new Date().getTime());
-            // ClassServer.set({
+            // SelfServer.set({
             //     ip: team.get('ip'),
             //     port: '4500',
             //     statusButton: $('#statusLaptop'),
             //     uri: ''
             // });
-            //ClassServer.init(function() {
+            //SelfServer.init(function() {
                 $('#setupwindow').modal('hide');
                 $('#welcome').hide();
                 $('#scoreboard').slideDown('slow');
 
                 //send message and start timer signaling game start
-                ClassServer.send(Sad.currentTeam);
+                SelfServer.send(Sad.currentTeam);
                 Sad.Timer.start();
                 $('#music')[0].volume = 0.5;
                 $('#music')[0].play();
@@ -232,6 +237,9 @@ $(function() {
             }
         });
 
+        var stopCallback = function(){};
+        RPiServer.send({stopgame: 'STOP'}, stopCallback);
+
         return false;
     });
 
@@ -252,7 +260,7 @@ $(function() {
 
         currentGame.set('notes', $('#inputGamenotesEnd').val());
 
-        //ClassServer.send(Sad.currentTeam);
+        //SelfServer.send(Sad.currentTeam);
 
         return false;
     });
@@ -277,7 +285,7 @@ Sad.updateTargets = function(targets) {
     var currentGame = Sad.currentTeam.getCurrentGame();
     currentGame.setTargets(targets);
 
-    ClassServer.send(Sad.currentTeam);
+    SelfServer.send(Sad.currentTeam);
 
     //update UI. 
     //TODO: make Views and put this in them

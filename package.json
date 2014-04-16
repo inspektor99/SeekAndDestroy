@@ -13,7 +13,10 @@
   },
   "homepage": "https://github.com/inspektor99/SeekAndDestroy",
   "dependencies": {
-    "express": "~3.4.4"
+    "express": "~3.4.4",
+    "socket.io": "~0.9.16",
+    "websocket-client": "~1.0.0",
+    "ws": "~0.4.31"
   },
   "devDependencies": {
     "grunt": "~0.4.1",
