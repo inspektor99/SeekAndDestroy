@@ -95,6 +95,11 @@ var SelfServer = new SockServer();
 var RPiServer = new SockServer();
 
 $(function() {
+    var serverSocket = io.connect('http://localhost:3000');
+    serverSocket.on('reset', function(data){
+        $('#setupwindow').modal();
+    });
+
     RPiServer.set({
         ip: '10.0.0.10',
         port: '4500',

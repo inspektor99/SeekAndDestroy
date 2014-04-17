@@ -35,7 +35,8 @@ module.exports = function(grunt) {
           RPiServer: true,
           //library globals
           '_': true,
-          Backbone: true
+          Backbone: true,
+          io: true
         }
       },
       files: {

@@ -2,6 +2,37 @@ var express = require('express');
 var http = require('http');
 var path = require('path');
 
+var app = express();
+
+app.set('port', process.env.PORT || 3000);
+app.use(express.favicon(path.join(__dirname, 'public/images/favicon.ico')));
+app.use(express.logger('dev'));
+app.use(express.bodyParser());
+app.use(express.json());
+app.use(express.urlencoded());
+app.use(express.methodOverride());
+app.use(app.router);
+app.use(express.static(path.join(__dirname, 'public')));
+
+// development only
+if ('development' == app.get('env')) {
+	app.use(express.errorHandler());
+}
+
+var server = http.createServer(app).listen(app.get('port'), function() {
+	console.log('Express server listening on port ' + app.get('port'));
+});
+
+//Socket.IO
+var io = require('socket.io').listen(server);
+
+var controllerSocket = null;
+io.sockets.on('connection', function (socket) {
+	console.log('connected to webserver socket.io');
+	controllerSocket = socket;
+});
+
+//WebSockets
 var WebSocket = require('ws')
   , ws = new WebSocket('ws://10.0.0.9:4500/ws');
 
@@ -16,28 +47,17 @@ ws.on('message', function(message) {
     mainResp.send(message);
 });
 
+ws.on('error', function(message) {
+	console.log('error from game server');
+	console.log(message);
+});
 
-var app = express();
-
-app.set('port', process.env.PORT || 3000);
-app.use(express.favicon());
-app.use(express.logger('dev'));
-app.use(express.bodyParser());
-app.use(express.json());
-app.use(express.urlencoded());
-app.use(express.methodOverride());
-app.use(app.router);
-app.use(express.static(path.join(__dirname, 'public')));
-
-// development only
-if ('development' == app.get('env')) {
-	app.use(express.errorHandler());
-}
-
+//Routs
 app.get('/reset', function(req, res) {
 	mainResp = res;
 
-	console.log(req.body);
+	controllerSocket.emit('reset');
+
 	var socketMsg = {stopgame: 'STOP'};
 	ws.send(JSON.stringify(socketMsg), {});
 });
@@ -80,6 +100,3 @@ app.get('/targets/:gamename', function(req, res) {
 	ws.send(JSON.stringify(socketMsg), {});
 });
 
-var server = http.createServer(app).listen(app.get('port'), function() {
-	console.log('Express server listening on port ' + app.get('port'));
-});var io = require('socket.io').listen(80);
