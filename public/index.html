@@ -21,39 +21,37 @@
         <audio id="bomb">
             <source src="media/bomb.mp3" type="audio/mpeg">
         </audio>
-        <nav class="navbar navbar-inverse navbar-static-top">
+        <nav class="navbar navbar-default navbar-static-top">
             <div class="navbar-header">
                 <a class="navbar-brand" href="#">Seek and Destroy</a>
             </div>
             <div class="navbar-form navbar-left">
-                <a href="#" id="generalSetup" class="btn btn-default"><span class="glyphicon glyphicon-cog"></span> General Setup</a>
+                <a href="#" id="generalSetup" class="btn btn-primary"><span class="glyphicon glyphicon-cog"></span> General Setup</a>
             </div>
             <div class="navbar-form navbar-right">
-                <a href="#" id="statusLaptop" class="btn btn-default" title="click to reset connection"><span class="glyphicon glyphicon-refresh"></span> Server</a>
-                <a href="#" id="statusPi" class="btn btn-default" title="click to reset connection"><span class="glyphicon glyphicon-refresh"></span> Rasp Pi</a>
-                <a href="#" id="resetAll" class="btn btn-default" title="click to reset all"><span class="glyphicon glyphicon-refresh"></span> Reset</a>
+                <a href="#" id="statusGameServer" class="btn btn-warning" title="click to reset connection"><span class="glyphicon glyphicon-refresh"></span> Game Server</a>
+                <a href="#" id="resetAll" class="btn btn-default" title="click to reset all"><span class="glyphicon glyphicon-refresh"></span> Reset All</a>
             </div>
         </nav>
         <div id="welcome" class="jumbotron">
             <h1>Seek and Destroy!</h1>
             <p>Welcome to the Seek and Destroy game.  Good luck!</p>
-            <p>
-                <a id="setup" class="btn btn-primary btn-lg">
-                    <span class="glyphicon glyphicon-cog"></span>
-                    Setup Game
-                </a>
-            </p>
         </div>
-        <div id="scoreboard" class="container" style="display: none;">
+        <div id="scoreboard" class="container-fluid" style="display: none;">
             <div class="row">
                 <div class="col-md-2">
                     <h2 id="timer">
                         0:00:00
                     </h2>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-6">
                     <h1 id="currteam">
-                    </h1>
+                    </h1> - 
+                    <h3 id="currgame">
+                    </h3>
+                </div>
+                <div class="col-md-4">
+                    <h2>Score: <span id="teamScore">0</span></h2>
                 </div>
             </div>
             <hr>
@@ -73,52 +71,6 @@
                 <div class="col-md-3">
                     <h1>Target 4</h1>
                     <span id="t4_counter" class="badge"><span>x</span></span>
-                </div>
-            </div>
-            <hr>
-            <div class="row">
-                <div class="col-md-12">
-                    <a href="#" id="manualdone" class="btn btn-primary">RPi Done!</a>
-                </div>
-            </div>
-        </div>
-        <div id="setupwindow" class="modal fade">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                        <h3>Game Settings</h3>
-                    </div>
-                    <div class="modal-body">
-                        <form class="form-horizontal">
-                            <div class="form-group">
-                                <label class="col-sm-4 control-label" for="inputTeamname">Team Name</label>
-                                <div class="col-sm-8">
-                                    <input class="form-control" type="text" id="inputTeamname" placeholder="Your Team Name">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-4 control-label" for="inputTeamIP">Team IP Address</label>
-                                <div class="col-sm-8">
-                                    <input class="form-control" type="text" id="inputTeamIP" placeholder="###.###.###.###" value="10.0.0.2">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-4 control-label" for="inputGamecode">Game Code</label>
-                                <div class="col-sm-8">
-                                    <input class="form-control" type="text" id="inputGamecode" placeholder="Enter the Game Code">
-                                </div>
-                            </div><div class="form-group">
-                                <label class="col-sm-4 control-label" for="inputGamenotesStart">Game Notes</label>
-                                <div class="col-sm-8">
-                                    <textarea class="form-control" id="inputGamenotesStart" rows="3"></textarea>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <a href="#" id="begin" class="btn btn-primary">Let's Begin!</a>
-                    </div>
                 </div>
             </div>
         </div>
@@ -201,13 +153,17 @@
                     <div class="modal-body">
                         <form class="form-horizontal">
                             <div class="form-group">
-                                <label class="col-sm-4 control-label" for="raspPiAddress">Raspberry Pi IP Address</label>
+                                <label class="col-sm-4 control-label" for="raspPiAddress">Game Server IP Address</label>
                                 <div class="col-sm-8">
-                                    <input class="form-control" type="text" id="raspPiAddress" placeholder="###.###.###.###" value="10.0.0.2">
+                                    <input class="form-control" type="text" id="raspPiAddress" placeholder="###.###.###.###" value="10.0.0.9">
                                 </div>
                             </div>
                         </form>
                     </div>
+                    <div class="modal-footer sad-buttons">
+                        <button type="button" id="piConnect" class="btn btn-primary">Connect</button>
+                        <button type="button" class="btn btn-default btn-xs" data-dismiss="modal">Close</button>
+                      </div>
                 </div>
             </div>
         </div>

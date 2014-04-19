@@ -1,3 +1,5 @@
+var util = require('util');
+
 var express = require('express');
 var http = require('http');
 var path = require('path');
@@ -32,29 +34,81 @@ io.sockets.on('connection', function (socket) {
 	controllerSocket = socket;
 });
 
-//WebSockets
-var WebSocket = require('ws')
-  , ws = new WebSocket('ws://10.0.0.9:4500/ws');
 
-ws.on('open', function() {
-    console.log('open');
-});
+
+//WebSockets
+var WebSocket = require('ws');
+var ws = {};
+
 
 var mainResp = {};
-ws.on('message', function(message) {
-	console.log('message from PI');
-	console.log(message);
-    mainResp.send(message);
-});
+var respArgs = {};
 
-ws.on('error', function(message) {
-	console.log('error from game server');
-	console.log(message);
-});
+var setRpiCommunication = function() {
+	ws.on('open', function() {
+	    console.log('connected to rPI');
+	    controllerSocket.emit('connectedrpi', {});
+	});
+
+	ws.on('message', function(message) {
+		console.log('message from PI');
+		console.log(message);
+
+		message = JSON.parse(message);
+
+		if (respArgs.startgame){
+			respArgs.targets = message;
+			controllerSocket.emit('startgame', respArgs);
+		}
+		else if (respArgs.stopgame) {
+			controllerSocket.emit('stopgame', respArgs);
+		}
+		else if (respArgs.reset) {
+			controllerSocket.emit('reset', respArgs);
+		}
+		else if (util.isArray(message)) {
+			//assume if response array and no args rpi is brodcasting target hits
+			respArgs.targets = message;
+			controllerSocket.emit('targethit', respArgs);
+		}
+		
+		respArgs = {};
+
+		try {
+	    	mainResp.send(message);
+		}
+		catch (ex) {
+			console.log('Could not send to response');
+		}
+	});
+
+	ws.on('close', function() {
+	    console.log('disconnected');
+	    controllerSocket.emit('connecterror', {});
+	});
+
+	ws.on('error', function(message) {
+		console.log('error from game server');
+		console.log(message);
+		controllerSocket.emit('connecterror', {});
+	});
+};
+
+
 
 //Routs
+app.get('/connect', function(req, res) {
+	ws = new WebSocket('ws://' + req.query.ip + ':4500/ws');
+	setRpiCommunication();
+
+	res.send(req.query);
+});
+
 app.get('/reset', function(req, res) {
 	mainResp = res;
+
+	respArgs = req.body;
+	respArgs.reset = true;
 
 	controllerSocket.emit('reset');
 
@@ -64,7 +118,8 @@ app.get('/reset', function(req, res) {
 
 app.post('/start', function(req, res) {
 	mainResp = res;
-	
+	respArgs = req.body;
+	respArgs.startgame = true;
 	console.log(req.body);
 
 	//TODO: do something clever with req.body.teamname
@@ -76,6 +131,9 @@ app.post('/start', function(req, res) {
 
 app.post('/stop', function(req, res) {
 	mainResp = res;
+
+	respArgs = req.body;
+	respArgs.stopgame = true;
 	
 	console.log(req.body);
 	var socketMsg = {stopgame: 'STOP'};

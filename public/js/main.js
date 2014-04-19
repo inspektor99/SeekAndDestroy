@@ -18,97 +18,10 @@ var Sad = {
     teams: []
 };
 
-var SockServer = Backbone.Model.extend({
-    defaults: {
-        ip: '10.0.0.10',
-        port: '4500',
-        socket: null,
-        connected: false,
-        statusButton: null,
-        respCallback: null,
-        uri: ''
-    },
-    init: function(connectCallback) {
-        if (!this.get('statusButton')) {
-            console.log('no button to update so assuming no connection');
-            return;
-        }
-        this.get('statusButton').removeClass();
-        this.get('statusButton').addClass('btn btn-warning');
-
-        var socket = new WebSocket('ws://' + this.get('ip') + ':' + this.get('port') + '/' + this.get('uri'));
-        console.log('connecting to :' + 'ws://' + this.get('ip') + ':' + this.get('port') + '/' + this.get('uri'));
-
-        var self = this;
-        //gotta do ws events inline to ensure backbone model scope
-        socket.onopen = function() {
-            self.get('statusButton').removeClass();
-            self.get('statusButton').addClass('btn btn-success');
-            console.log('connected to ' + self.get('ip') + ':' + self.get('port'));
-            self.set('connected', true);
-
-            if (connectCallback) {
-                connectCallback();
-            }
-        };
-        socket.onmessage = function(msg) {
-            console.log(self.get('ip') + ' message ' + msg.data);
-            var jsonResp = JSON.parse(msg.data);
-
-            //if the game is running, only message that comes across is target hit.
-            if (Sad.Timer.isRunning()) {
-                Sad.playBomb();
-                Sad.updateTargets(jsonResp);
-            }
-            if (self.get('respCallback')) {
-                self.get('respCallback')(jsonResp);
-                self.set('respCallback', null);
-            }
-        };
-        socket.onclose = function() {
-            self.get('statusButton').removeClass();
-            self.get('statusButton').addClass('btn btn-danger');
-            console.log(self.get('ip') + ' socket closed.');
-            self.set('connected', false);
-            //this.init();
-        };
-        socket.onerror = function(err) {
-            console.log(self.get('ip') + ' there was an error');
-            console.log(err);
-        };
-
-        this.set('socket', socket);
-    },
-    send: function(model, respCallback) {
-        if (this.get('connected')) {
-            this.set('respCallback', respCallback);
-
-            var jsonToSend = JSON.stringify(model);
-            console.log(this.get('ip') + ' sending message\n' + jsonToSend);
-            this.get('socket').send(jsonToSend);
-        } else {
-            console.log(this.get('ip') + ' not connected so no message sent');
-        }
-    }
-});
-var SelfServer = new SockServer();
-var RPiServer = new SockServer();
-
 $(function() {
     var serverSocket = io.connect('http://localhost:3000');
-    serverSocket.on('reset', function(data){
-        $('#setupwindow').modal();
-    });
 
-    RPiServer.set({
-        ip: '10.0.0.10',
-        port: '4500',
-        statusButton: $('#statusPi'),
-        uri: 'ws'
-    });
-    //RPiServer.init();
-
-    $('#statusLaptop').tooltip({
+    $('#statusGameServer').tooltip({
         placement: 'bottom'
     });
 
@@ -116,25 +29,22 @@ $(function() {
         placement: 'bottom'
     });
 
-    $('#statusPi').tooltip({
-        placement: 'bottom'
-    });
+    var connectToPi = function() {
+        $.get('/connect?ip=' + $('#raspPiAddress').val());
+    };
+
     $('#resetAll').on('click', function(e) {
         $.get('/reset');
 
         return false;
     });
-    $('#statusLaptop').on('click', function(e) {
-        SelfServer.init();
 
+
+    $('#statusGameServer').on('click', function(e) {
+        connectToPi();
         return false;
     });
-    $('#statusPi').on('click', function(e) {
-        RPiServer.set({ip: $('#raspPiAddress').val()});
-        RPiServer.init();
 
-        return false;
-    });
     $('#generalSetup').on('click', function() {
         //socket.send('test');
         $('#generalSetupWindow').modal();
@@ -142,88 +52,73 @@ $(function() {
         return false;
     });
 
-    $('#setup').on('click', function() {
+    $('#piConnect').on('click', function() {
         //socket.send('test');
-        $('#setupwindow').modal();
+        $('#generalSetupWindow').modal('hide');
 
-        var setupCallback = function(games) {
-            console.log(games);
-        };
-        RPiServer.send({
-            getgames: null
-        }, setupCallback);
-    });
-
-    //TODO: wait till pi says it's ready
-    $('#begin').on('click', function() {
-
-        var beginCallback = function(targets) {
-            $('#timer').removeClass('text-warning');
-            $('#timer').removeClass('text-error');
-            $('#timer').addClass('text-info');
-
-            var team = new Sad.Team();
-            team.set('name', $('#inputTeamname').val());
-            team.set('ip', $('#inputTeamIP').val());
-
-            Sad.addTeam(team);
-            team = Sad.setCurrentTeam(team.get('name'));
-
-            team.addNewGame($('#inputGamecode').val(), targets);
-
-            $('#currteam').text(Sad.currentTeam.get('name'));
-
-
-            var currentGame = Sad.currentTeam.getCurrentGame();
-
-            currentGame.set('notes', $('#inputGamenotesStart').val());
-
-            Sad.updateTargets(targets);
-
-            currentGame.set('start', new Date().getTime());
-            // SelfServer.set({
-            //     ip: team.get('ip'),
-            //     port: '4500',
-            //     statusButton: $('#statusLaptop'),
-            //     uri: ''
-            // });
-            //SelfServer.init(function() {
-                $('#setupwindow').modal('hide');
-                $('#welcome').hide();
-                $('#scoreboard').slideDown('slow');
-
-                //send message and start timer signaling game start
-                SelfServer.send(Sad.currentTeam);
-                Sad.Timer.start();
-                $('#music')[0].volume = 0.5;
-                $('#music')[0].play();
-            //});
-        };
-
-        RPiServer.send({
-            startgame: $('#inputGamecode').val()
-        }, beginCallback);
+        connectToPi();
 
         return false;
     });
 
-    $('#manualdone').on('click', function() {
+    serverSocket.on('connectedrpi', function() {
+        $('#statusGameServer').removeClass('btn-default btn-success btn-danger btn-warning')
+        .addClass('btn-success');
+    });
+
+    serverSocket.on('connecterror', function() {
+        $('#statusGameServer').removeClass('btn-default btn-success btn-danger btn-warning')
+        .addClass('btn-danger');
+
+        onFinish();
+    });
+
+    serverSocket.on('startgame', function(data){
+        $('#timer').removeClass('text-warning');
+        $('#timer').removeClass('text-error');
+        $('#timer').addClass('text-info');
+
+        var team = new Sad.Team();
+        team.set('name', data.teamname);
+        //team.set('ip', data.ip);
+
+        Sad.addTeam(team);
+        //team = Sad.setCurrentTeam(team.get('name'));
+        team = Sad.setCurrentTeam(data.teamname);
+
+        team.addNewGame(data.gamename, data.targets);
+
+        $('#currteam').text(Sad.currentTeam.get('name'));
+        $('#currgame').text(data.gamename);
+
+
         var currentGame = Sad.currentTeam.getCurrentGame();
-        $('#finalscorewindow').modal();
-        Sad.Timer.stop();
-        currentGame.set('end', new Date().getTime());
-        $('#music')[0].pause();
 
-        $('#music')[0].currentTime = 0;
+        //currentGame.set('notes', $('#inputGamenotesStart').val());
 
-        currentGame.set('endDisplay', $('#timer').text());
+        Sad.updateTargets(data.targets);
 
-        $('#resultTeamName').html(Sad.currentTeam.get('name'));
+        currentGame.set('start', new Date().getTime());
 
-        $('#inputTime').val(currentGame.get('endDisplay'));
-        $('#inputFinalscore').val(currentGame.get('score'));
-        $('#inputGamenotesEnd').val(currentGame.get('notes'));
+        //$('#setupwindow').modal('hide');
+        $('#welcome').hide();
+        $('#scoreboard').slideDown('slow');
 
+        //send message and start timer signaling game start
+        //SelfServer.send(Sad.currentTeam);
+        Sad.Timer.start();
+        $('#music')[0].volume = 0.2;
+        $('#music')[0].play();
+
+        return false;
+    });
+
+    serverSocket.on('targethit', function(data){
+        Sad.playBomb();
+
+        Sad.updateTargets(data.targets);
+
+        var currentGame = Sad.currentTeam.getCurrentGame();
         $('#t1_type, #t2_type, #t3_type, #t4_type').removeClass();
         $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
         _.each(currentGame.get('targets'), function(target) {
@@ -240,19 +135,61 @@ $(function() {
             } else if (status === 2) {
                 targetTypeElem.addClass('muted');
             }
-        });
 
-        var stopCallback = function(){};
-        RPiServer.send({stopgame: 'STOP'}, stopCallback);
+            //TODO: update score
+        });
+    });
+
+    serverSocket.on('stopgame', function(data){
+        var currentGame = Sad.currentTeam.getCurrentGame();
+        if (currentGame !== null) {
+            $('#finalscorewindow').modal();
+            Sad.Timer.stop();
+            currentGame.set('end', new Date().getTime());
+            $('#music')[0].pause();
+
+            $('#music')[0].currentTime = 0;
+
+            currentGame.set('endDisplay', $('#timer').text());
+
+            $('#resultTeamName').html(Sad.currentTeam.get('name'));
+
+            $('#inputTime').val(currentGame.get('endDisplay'));
+            $('#inputFinalscore').val(currentGame.get('score'));
+            $('#inputGamenotesEnd').val(currentGame.get('notes'));
+        }
 
         return false;
     });
 
-    $('#finish').on('click', function() {
+    var onFinish = function() {
+        $('#music')[0].pause();
+        $('#music')[0].currentTime = 0;
+
         Sad.Timer.reset();
+
         $('#scoreboard').hide();
         $('#welcome').slideDown('slow');
         $('#finalscorewindow').modal('hide');
+        $('#teamScore').html('0');
+
+        if (Sad.currentTeam !== null) {
+            var currentGame = Sad.currentTeam.getCurrentGame();
+            _.each(currentGame.get('targets'), function(target) {
+                $('#t' + target.get('id') + '_hit').val('0');
+                var targetTypeElem = $('#t' + target.get('id') + '_type');
+                targetTypeElem.removeClass();
+                targetTypeElem.addClass('muted');
+            });
+        }
+    };
+
+    serverSocket.on('reset', function(data){
+        onFinish();
+    });
+
+    $('#finish').on('click', function() {
+        onFinish();
 
         var currentGame = Sad.currentTeam.getCurrentGame();
         _.each(currentGame.get('targets'), function(target) {
@@ -264,8 +201,6 @@ $(function() {
         currentGame.set('score', parseInt(adjustedScore));
 
         currentGame.set('notes', $('#inputGamenotesEnd').val());
-
-        //SelfServer.send(Sad.currentTeam);
 
         return false;
     });
@@ -289,8 +224,6 @@ Sad.loadStats = function(statTable) {
 Sad.updateTargets = function(targets) {
     var currentGame = Sad.currentTeam.getCurrentGame();
     currentGame.setTargets(targets);
-
-    SelfServer.send(Sad.currentTeam);
 
     //update UI. 
     //TODO: make Views and put this in them

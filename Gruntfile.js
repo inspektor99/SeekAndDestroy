@@ -40,7 +40,7 @@ module.exports = function(grunt) {
         }
       },
       files: {
-        src: ['public/js/*.js', '!public/js/min/*.js']
+        src: ['public/js/*.js', '!public/js/min/*.js', '!public/js/sockets.js']
       }
     },
     less: {
@@ -59,7 +59,7 @@ module.exports = function(grunt) {
         tasks: ['less']
       },
       jshint: {
-        files: ['public/js/*.js', 'public/!js/min/*.js'],
+        files: ['public/js/*.js', 'public/!js/min/*.js', '!public/js/sockets.js'],
         tasks: ['jshint', 'uglify']
       }
     }
