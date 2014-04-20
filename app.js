@@ -7,7 +7,7 @@ var path = require('path');
 var app = express();
 
 app.set('port', process.env.PORT || 3000);
-app.use(express.favicon(path.join(__dirname, 'public/images/favicon.ico')));
+app.use(express.favicon(path.join(__dirname, 'public/images/favicon/favicon.ico')));
 app.use(express.logger('dev'));
 app.use(express.bodyParser());
 app.use(express.json());
@@ -71,7 +71,7 @@ var setRpiCommunication = function() {
 			respArgs.targets = message;
 			controllerSocket.emit('targethit', respArgs);
 		}
-		
+
 		respArgs = {};
 
 		try {
