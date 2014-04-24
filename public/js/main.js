@@ -126,7 +126,7 @@ $(function() {
                 var score = $('#teamScore').text();
                 score = parseInt(score);
 
-                score += parseInt(target.points);
+                score += parseInt(target.get('points'));
 
                 $('#teamScore').text(score);
 
