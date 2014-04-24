@@ -123,13 +123,7 @@ $(function() {
             $('#t1_type, #t2_type, #t3_type, #t4_type').removeClass();
             $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
             _.each(currentGame.get('targets'), function(target) {
-                var score = $('#teamScore').text();
-                score = parseFloat(score);
-
-                //console.log('UI Score:     ' + score);
-                //console.log('Target Score: ' + target.get('points'));
-
-                score += (parseFloat(target.get('points')) * parseInt(target.get('hit')));
+                var score = (parseFloat(target.get('points')) * parseInt(target.get('hit')));
 
                 $('#teamScore').text(score);
 
