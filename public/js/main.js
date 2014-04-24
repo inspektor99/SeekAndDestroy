@@ -122,10 +122,9 @@ $(function() {
             var currentGame = Sad.currentTeam.getCurrentGame();
             $('#t1_type, #t2_type, #t3_type, #t4_type').removeClass();
             $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
+            var score = 0;
             _.each(currentGame.get('targets'), function(target) {
-                var score = (parseFloat(target.get('points')) * parseInt(target.get('hit')));
-
-                $('#teamScore').text(score);
+                score += (parseFloat(target.get('points')) * parseInt(target.get('hit')));
 
                 $('#t' + target.get('id') + '_hit').val(target.get('hit'));
                 var targetTypeElem = $('#t' + target.get('id') + '_type');
@@ -143,6 +142,8 @@ $(function() {
     
                 //TODO: update score
             });
+
+            $('#teamScore').text(score);
         }
     });
 
