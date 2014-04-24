@@ -129,7 +129,7 @@ $(function() {
                 //console.log('UI Score:     ' + score);
                 //console.log('Target Score: ' + target.get('points'));
 
-                score += (parseFloat(target.get('points')) * parseInt(target.get('points')));
+                score += (parseFloat(target.get('points')) * parseInt(target.get('hit')));
 
                 $('#teamScore').text(score);
 
