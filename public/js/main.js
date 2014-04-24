@@ -114,35 +114,45 @@ $(function() {
     });
 
     serverSocket.on('targethit', function(data){
-        Sad.playBomb();
+        if ($('#scoreboard').is(':visible')) {
+            Sad.playBomb();
+    
+            Sad.updateTargets(data.targets);
+    
+            var currentGame = Sad.currentTeam.getCurrentGame();
+            $('#t1_type, #t2_type, #t3_type, #t4_type').removeClass();
+            $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
+            _.each(currentGame.get('targets'), function(target) {
+                var score = $('#teamScore').text();
+                score = parseInt(score);
 
-        Sad.updateTargets(data.targets);
+                score += parseInt(target.points);
 
-        var currentGame = Sad.currentTeam.getCurrentGame();
-        $('#t1_type, #t2_type, #t3_type, #t4_type').removeClass();
-        $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
-        _.each(currentGame.get('targets'), function(target) {
-            $('#t' + target.get('id') + '_hit').val(target.get('hit'));
-            var targetTypeElem = $('#t' + target.get('id') + '_type');
-            targetTypeElem.removeClass();
 
-            var status = target.get('status');
 
-            if (status === 1) {
-                targetTypeElem.addClass('text-success');
-            } else if (status === 0) {
-                targetTypeElem.addClass('text-error');
-            } else if (status === 2) {
-                targetTypeElem.addClass('muted');
-            }
-
-            //TODO: update score
-        });
+                $('#t' + target.get('id') + '_hit').val(target.get('hit'));
+                var targetTypeElem = $('#t' + target.get('id') + '_type');
+                targetTypeElem.removeClass();
+    
+                var status = target.get('status');
+    
+                if (status === 1) {
+                    targetTypeElem.addClass('text-success');
+                } else if (status === 0) {
+                    targetTypeElem.addClass('text-error');
+                } else if (status === 2) {
+                    targetTypeElem.addClass('muted');
+                }
+    
+                //TODO: update score
+            });
+        }
     });
 
     serverSocket.on('stopgame', function(data){
         var currentGame = Sad.currentTeam.getCurrentGame();
         if (currentGame !== null) {
+            currentGame.set('score', parseInt($('#teamScore').text()));
             $('#finalscorewindow').modal();
             Sad.Timer.stop();
             currentGame.set('end', new Date().getTime());
