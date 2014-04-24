@@ -124,9 +124,9 @@ $(function() {
             $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
             _.each(currentGame.get('targets'), function(target) {
                 var score = $('#teamScore').text();
-                score = parseInt(score);
+                score = parseFloat(score);
 
-                score += parseInt(target.get('points'));
+                score += parseFloat(target.get('points'));
 
                 $('#teamScore').text(score);
 
