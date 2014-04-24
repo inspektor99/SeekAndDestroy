@@ -15,10 +15,11 @@ var Sad = {
     TIME_DANGER: 9000,
     TIME_LIMIT: 12000,
     currentTeam: null,
-    teams: []
+    teams: null
 };
 
 $(function() {
+    Sad.teams = new Sad.Teams();
     var serverSocket = io.connect('http://localhost:3000');
 
     $('#statusGameServer').tooltip({
@@ -123,7 +124,7 @@ $(function() {
             $('#t1_type, #t2_type, #t3_type, #t4_type').removeClass();
             $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
             var score = 0;
-            _.each(currentGame.get('targets'), function(target) {
+            currentGame.get('targets').each(function(target) {
                 score += (parseFloat(target.get('points')) * parseInt(target.get('hit')));
 
                 $('#t' + target.get('id') + '_hit').val(target.get('hit'));
@@ -183,11 +184,27 @@ $(function() {
 
         if (Sad.currentTeam !== null) {
             var currentGame = Sad.currentTeam.getCurrentGame();
-            _.each(currentGame.get('targets'), function(target) {
+            currentGame.get('targets').each(function(target) {
                 $('#t' + target.get('id') + '_hit').val('0');
                 var targetTypeElem = $('#t' + target.get('id') + '_type');
                 targetTypeElem.removeClass();
                 targetTypeElem.addClass('muted');
+            });
+        }
+
+        if (Sad.teams.length > 0) {
+
+            var scoreboard = Sad.teams.sortBy(function(team) {
+                return (team.getBestGame().get('score') * -1);
+            });
+
+            $('#welcome table').remove();
+            var table = $('<table class="table table-striped"><thead><th><h3>Team</h3></th><th><h3>Score</h3></th></thead><tbody></tbody></table>');
+            $('#welcome').append(table);
+            _.each(scoreboard, function(team) {
+                var bestGame = team.getBestGame();
+                table.find('tbody').append('<tr><td><h4>' + team.get('name') + '</h4></td><td><h4>' + bestGame.get('score') + '</h4></td></tr>');
+
             });
         }
     };
@@ -197,10 +214,8 @@ $(function() {
     });
 
     $('#finish').on('click', function() {
-        onFinish();
-
         var currentGame = Sad.currentTeam.getCurrentGame();
-        _.each(currentGame.get('targets'), function(target) {
+        currentGame.get('targets').each(function(target) {
             var adjustedHits = $('#t' + target.get('id') + '_hit').val();
             target.set('hit', parseInt(adjustedHits));
         });
@@ -209,6 +224,8 @@ $(function() {
         currentGame.set('score', parseInt(adjustedScore));
 
         currentGame.set('notes', $('#inputGamenotesEnd').val());
+
+        onFinish();
 
         return false;
     });
@@ -238,7 +255,7 @@ Sad.updateTargets = function(targets) {
     $('#t1_counter, #t2_counter, #t3_counter, #t4_counter').removeClass();
     $('#t1_counter, #t2_counter, #t3_counter, #t4_counter').addClass('badge');
     $('#t1_counter>span, #t2_counter>span, #t3_counter>span, #t4_counter>span').text('X');
-    _.each(currentGame.get('targets'), function(target) {
+    currentGame.get('targets').each(function(target) {
         var counter = $('#t' + target.get('id') + '_counter');
 
         $('span', counter).text(target.get('hit'));
@@ -255,30 +272,38 @@ Sad.updateTargets = function(targets) {
         }
     });
 };
+
 Sad.Target = Backbone.Model.extend({
     defaults: {
         id: 0,
         status: 2,
         hit: 0
+    },
+    initialize: function() {
     }
 });
+
+Sad.Targets = Backbone.Collection.extend({
+    model: Sad.Target
+});
+
 Sad.addTeam = function(team) {
     var added = true;
-    _.each(this.teams, function(teamIt) {
+    this.teams.each(function(teamIt) {
         if (teamIt.get('name').toLowerCase() === team.get('name').toLowerCase()) {
             added = false;
         }
     });
 
     if (added) {
-        team.set('games', []);
-        this.teams.push(team);
+        team.get('games').reset();
+        this.teams.add(team);
     }
     return added;
 };
 Sad.setCurrentTeam = function(name) {
     var setTeam = null;
-    _.each(this.teams, function(team) {
+    this.teams.each(function(team) {
         if (team.get('name').toLowerCase() === name.toLowerCase()) {
             Sad.currentTeam = team;
             setTeam = team;
@@ -292,7 +317,10 @@ Sad.Team = Backbone.Model.extend({
         name: null,
         ip: null,
         score: 0,
-        games: []
+        games: null
+    },
+    initialize: function() {
+        this.set('games', new Sad.Games());
     },
     addNewGame: function(code, targets) {
         var game = new Sad.Game();
@@ -300,14 +328,23 @@ Sad.Team = Backbone.Model.extend({
         game.set('code', code);
         game.setTargets(targets);
 
-        this.get('games').push(game);
+        this.get('games').add(game);
 
         return game;
     },
     getCurrentGame: function() {
-        return this.get('games')[this.get('games').length - 1];
+        return this.get('games').at(this.get('games').length - 1);
+    },
+    getBestGame: function() {
+        return this.get('games').max(function(game) {
+            return game.get('score');
+        });
     }
 });
+Sad.Teams = Backbone.Collection.extend({
+    model: Sad.Team
+});
+
 Sad.Game = Backbone.Model.extend({
     defaults: {
         code: null,
@@ -318,15 +355,15 @@ Sad.Game = Backbone.Model.extend({
         score: 0,
         notes: null
     },
+    initialize: function () {
+        this.set('targets', new Sad.Targets());
+    },
     setTargets: function(targets) {
-        this.set('targets', []);
-        var i = 0;
-        for (i = 0; i < targets.length; i++) {
-            var target = new Sad.Target();
-            target.set(targets[i]);
-            this.get('targets').push(target);
-        }
+        this.get('targets').reset(targets);
     }
+});
+Sad.Games = Backbone.Collection.extend({
+    model: Sad.Game
 });
 Sad.Timer = {
     DEFAULT_DISPLAY: '0:00:000',
