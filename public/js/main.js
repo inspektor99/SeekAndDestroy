@@ -199,7 +199,7 @@ $(function() {
             });
 
             $('#welcome table').remove();
-            var table = $('<table class="table table-striped"><thead><th><h3>Team</h3></th><th><h3>Score</h3></th></thead><tbody></tbody></table>');
+            var table = $('<table class="table table-striped"><thead><th><h3>Team</h3></th><th><h3>Best Score</h3></th></thead><tbody></tbody></table>');
             $('#welcome').append(table);
             _.each(scoreboard, function(team) {
                 var bestGame = team.getBestGame();
