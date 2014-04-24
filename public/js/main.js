@@ -128,7 +128,7 @@ $(function() {
 
                 score += parseInt(target.points);
 
-
+                $('#teamScore').text(score);
 
                 $('#t' + target.get('id') + '_hit').val(target.get('hit'));
                 var targetTypeElem = $('#t' + target.get('id') + '_type');
