@@ -126,10 +126,10 @@ $(function() {
                 var score = $('#teamScore').text();
                 score = parseFloat(score);
 
-                console.log('UI Score:     ' + score);
-                console.log('Target Score: ' + target.get('points'));
+                //console.log('UI Score:     ' + score);
+                //console.log('Target Score: ' + target.get('points'));
 
-                score += parseFloat(target.get('points'));
+                score += (parseFloat(target.get('points')) * parseInt(target.get('points')));
 
                 $('#teamScore').text(score);
 
