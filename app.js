@@ -44,6 +44,8 @@ var ws = {};
 var mainResp = {};
 var respArgs = {};
 
+var isGameStarted = false;
+
 var setRpiCommunication = function() {
 	ws.on('open', function() {
 	    console.log('connected to rPI');
@@ -57,6 +59,7 @@ var setRpiCommunication = function() {
 		message = JSON.parse(message);
 
 		if (respArgs.startgame){
+
 			respArgs.targets = message;
 			controllerSocket.emit('startgame', respArgs);
 		}
@@ -65,6 +68,9 @@ var setRpiCommunication = function() {
 		}
 		else if (respArgs.reset) {
 			controllerSocket.emit('reset', respArgs);
+		}
+		else if (respArgs.timeover) {
+			controllerSocket.emit('stopgame', respArgs);
 		}
 		else if (util.isArray(message)) {
 			//assume if response array and no args rpi is brodcasting target hits
@@ -98,11 +104,32 @@ var setRpiCommunication = function() {
 
 //Routs
 app.get('/connect', function(req, res) {
+	isGameStarted = false;
 	ws = new WebSocket('ws://' + req.query.ip + ':4500/ws');
 	setRpiCommunication();
 
 	res.send(req.query);
 });
+
+app.get('/timeover', function(req, res) {
+	mainResp = res;
+
+	respArgs = req.body;
+	respArgs.timeover = true;
+
+	//controllerSocket.emit('timeover');
+
+	if (isGameStarted === true) {
+		isGameStarted = false;
+
+		var socketMsg = {stopgame: 'STOP'};
+		ws.send(JSON.stringify(socketMsg), {});
+	}
+	else {
+		res.send({});
+	}
+	
+})
 
 app.get('/reset', function(req, res) {
 	mainResp = res;
@@ -110,34 +137,55 @@ app.get('/reset', function(req, res) {
 	respArgs = req.body;
 	respArgs.reset = true;
 
-	controllerSocket.emit('reset');
+	//controllerSocket.emit('reset');
 
-	var socketMsg = {stopgame: 'STOP'};
-	ws.send(JSON.stringify(socketMsg), {});
+	if (isGameStarted === true) {
+		isGameStarted = false;
+
+		var socketMsg = {stopgame: 'STOP'};
+		ws.send(JSON.stringify(socketMsg), {});
+	}
+	else {
+		res.send({});
+	}
+	
 });
 
 app.post('/start', function(req, res) {
-	mainResp = res;
-	respArgs = req.body;
-	respArgs.startgame = true;
-	console.log(req.body);
+	if (isGameStarted === false) {
+		isGameStarted = true;
 
-	//TODO: do something clever with req.body.teamname
-	var socketMsg = {startgame: req.body.gamename};
-	ws.send(JSON.stringify(socketMsg), {});
+		mainResp = res;
+		respArgs = req.body;
+		respArgs.startgame = true;
+		console.log(req.body);
 
-	//TODO: send client game and team name to keep track of points
+		//TODO: do something clever with req.body.teamname
+		var socketMsg = {startgame: req.body.gamename};
+		ws.send(JSON.stringify(socketMsg), {});
+
+		//TODO: send client game and team name to keep track of points		
+	}
+	else {
+		res.send({});
+	}
 });
 
 app.post('/stop', function(req, res) {
-	mainResp = res;
+	if (isGameStarted === true) {
+		isGameStarted = false;
+		mainResp = res;
 
-	respArgs = req.body;
-	respArgs.stopgame = true;
-	
-	console.log(req.body);
-	var socketMsg = {stopgame: 'STOP'};
-	ws.send(JSON.stringify(socketMsg), {});
+		respArgs = req.body;
+		respArgs.stopgame = true;
+		
+		console.log(req.body);
+		var socketMsg = {stopgame: 'STOP'};
+		ws.send(JSON.stringify(socketMsg), {});
+	}
+	else {
+		res.send({});
+	}
 });
 
 app.get('/games', function(req, res) {

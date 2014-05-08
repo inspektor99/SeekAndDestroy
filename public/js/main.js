@@ -9,16 +9,25 @@
 
 //Seek and Destroy object
 var Sad = {
+    GameStates: {
+        Stopped: 0,
+        Started: 1,
+        FinalScore: 2
+    },
+    gameState: null,
     TARGET_COUNT: 4,
     //in 10 milliseconds.  2 mins
-    TIME_WARNING: 6000,
-    TIME_DANGER: 9000,
-    TIME_LIMIT: 12000,
+    TIME_WARNING: 3000,
+    TIME_DANGER: 4500,
+    TIME_LIMIT: 6000,
     currentTeam: null,
-    teams: null
+    teams: null,
+    setGameOver: null
 };
 
 $(function() {
+    Sad.gameState = Sad.GameStates.Stopped;
+
     Sad.teams = new Sad.Teams();
     var serverSocket = io.connect('http://localhost:3000');
 
@@ -75,49 +84,55 @@ $(function() {
     });
 
     serverSocket.on('startgame', function(data){
-        $('#timer').removeClass('text-warning');
-        $('#timer').removeClass('text-error');
-        $('#timer').addClass('text-info');
+        if (Sad.gameState === Sad.GameStates.FinalScore) {
+            Sad.gameState = Sad.GameStates.Stopped;
+            setScore();
+        }
+        if (Sad.gameState === Sad.GameStates.Stopped) {
+            $('#timer').removeClass('text-warning');
+            $('#timer').removeClass('text-danger');
+            $('#timer').addClass('text-info');
 
-        var team = new Sad.Team();
-        team.set('name', data.teamname);
-        //team.set('ip', data.ip);
+            var team = new Sad.Team();
+            team.set('name', data.teamname);
+            //team.set('ip', data.ip);
 
-        Sad.addTeam(team);
-        //team = Sad.setCurrentTeam(team.get('name'));
-        team = Sad.setCurrentTeam(data.teamname);
+            Sad.addTeam(team);
+            //team = Sad.setCurrentTeam(team.get('name'));
+            team = Sad.setCurrentTeam(data.teamname);
 
-        team.addNewGame(data.gamename, data.targets);
+            team.addNewGame(data.gamename, data.targets);
 
-        $('#currteam').text(Sad.currentTeam.get('name'));
-        $('#currgame').text(data.gamename);
+            $('#currteam').text(Sad.currentTeam.get('name'));
+            $('#currgame').text(data.gamename);
 
 
-        var currentGame = Sad.currentTeam.getCurrentGame();
+            var currentGame = Sad.currentTeam.getCurrentGame();
 
-        //currentGame.set('notes', $('#inputGamenotesStart').val());
+            //currentGame.set('notes', $('#inputGamenotesStart').val());
 
-        Sad.updateTargets(data.targets);
+            Sad.updateTargets(data.targets);
 
-        currentGame.set('start', new Date().getTime());
+            currentGame.set('start', new Date().getTime());
 
-        //$('#setupwindow').modal('hide');
-        $('#welcome').hide();
-        $('#scoreboard').slideDown('slow');
+            //$('#setupwindow').modal('hide');
+            $('#welcome').hide();
+            $('#scoreboard').slideDown('slow');
 
-        //send message and start timer signaling game start
-        //SelfServer.send(Sad.currentTeam);
-        Sad.Timer.start();
-        $('#music')[0].volume = 0.2;
-        $('#music')[0].play();
+            //send message and start timer signaling game start
+            //SelfServer.send(Sad.currentTeam);
+            Sad.Timer.start();
+            $('#music')[0].volume = 0.08;
+            $('#music')[0].play();
+
+            Sad.gameState = Sad.GameStates.Started;
+        }
 
         return false;
     });
 
     serverSocket.on('targethit', function(data){
-        if ($('#scoreboard').is(':visible')) {
-            Sad.playBomb();
-    
+        if (Sad.gameState === Sad.GameStates.Started) {
             Sad.updateTargets(data.targets);
     
             var currentGame = Sad.currentTeam.getCurrentGame();
@@ -144,13 +159,24 @@ $(function() {
                 //TODO: update score
             });
 
-            $('#teamScore').text(score);
+            if ($('#teamScore').text() !== score.toString()) {
+                Sad.playBomb();
+
+                $('#teamScore').text(score);
+            }
         }
     });
 
     serverSocket.on('stopgame', function(data){
-        var currentGame = Sad.currentTeam.getCurrentGame();
-        if (currentGame !== null) {
+        setGameOver(data);
+
+        return false;
+    });
+
+    var setGameOver = function(data) {
+        if (Sad.gameState === Sad.GameStates.Started) {
+            var currentGame = Sad.currentTeam.getCurrentGame();
+
             currentGame.set('score', parseInt($('#teamScore').text()));
             $('#finalscorewindow').modal();
             Sad.Timer.stop();
@@ -166,10 +192,10 @@ $(function() {
             $('#inputTime').val(currentGame.get('endDisplay'));
             $('#inputFinalscore').val(currentGame.get('score'));
             $('#inputGamenotesEnd').val(currentGame.get('notes'));
-        }
 
-        return false;
-    });
+            Sad.gameState = Sad.GameStates.FinalScore;
+        }
+    };
 
     var onFinish = function() {
         $('#music')[0].pause();
@@ -182,6 +208,7 @@ $(function() {
         $('#finalscorewindow').modal('hide');
         $('#teamScore').html('0');
 
+        //if (Sad.gameState === Sad.GameStates.FinalScore || Sad.gameState === Sad.GameStates.Started) {
         if (Sad.currentTeam !== null) {
             var currentGame = Sad.currentTeam.getCurrentGame();
             currentGame.get('targets').each(function(target) {
@@ -207,13 +234,21 @@ $(function() {
 
             });
         }
+        //}
+
+        Sad.gameState = Sad.GameStates.Stopped;
+
     };
 
     serverSocket.on('reset', function(data){
         onFinish();
     });
 
-    $('#finish').on('click', function() {
+    serverSocket.on('timeover', function(data){
+        setGameOver(data);
+    });
+
+    var setScore = function() {
         var currentGame = Sad.currentTeam.getCurrentGame();
         currentGame.get('targets').each(function(target) {
             var adjustedHits = $('#t' + target.get('id') + '_hit').val();
@@ -226,24 +261,23 @@ $(function() {
         currentGame.set('notes', $('#inputGamenotesEnd').val());
 
         onFinish();
+    };
 
+    $('#finish').on('click', function() {
+        if (Sad.gameState === Sad.GameStates.FinalScore) {
+            setScore();         
+        }
+        
         return false;
     });
 });
 
 Sad.playBomb = function() {
-    $('#bomb')[0].volume = 1;
-    $('#bomb')[0].pause();
-    $('#bomb')[0].currentTime = 0;
-    $('#bomb')[0].play();
-};
-Sad.loadStats = function(statTable) {
-    var i = 0,
-        len = this.teams.length;
-    $('tbody', statTable).html('');
-    for (i = 0; i < len; i++) {
-        var teamJson = this.teams[i].toJSON();
-        $('tbody', statTable).append('<tr><td></td><td>' + teamJson.name + '</td><td>' + teamJson.games.length + '</td><td></td></tr>');
+    if (Sad.gameState === Sad.GameStates.Started) {
+        $('#bomb')[0].volume = 1;
+        $('#bomb')[0].pause();
+        $('#bomb')[0].currentTime = 0;
+        $('#bomb')[0].play();
     }
 };
 Sad.updateTargets = function(targets) {
@@ -402,6 +436,7 @@ Sad.Timer = {
             $('#timer').addClass('text-danger');
         }
         if (Sad.Timer.tick === Sad.TIME_LIMIT) {
+            $.get('/timeover');
             Sad.Timer.stop();
         }
     },
