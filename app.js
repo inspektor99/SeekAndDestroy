@@ -105,7 +105,7 @@ var setRpiCommunication = function() {
 //Routs
 app.get('/connect', function(req, res) {
 	isGameStarted = false;
-	ws = new WebSocket('ws://' + req.query.ip + ':4500/ws');
+	ws = new WebSocket('ws://localhost:4500/ws');
 	setRpiCommunication();
 
 	res.send(req.query);
