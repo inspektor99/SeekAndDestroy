@@ -40,7 +40,7 @@ $(function() {
     });
 
     var connectToPi = function() {
-        $.get('/connect?ip=localhost');
+        $.get('/connect?ip=' + $('#raspPiAddress').val());
     };
 
     $('#resetAll').on('click', function(e) {
