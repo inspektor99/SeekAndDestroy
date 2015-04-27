@@ -129,7 +129,7 @@ app.get('/timeover', function(req, res) {
 		res.send({});
 	}
 	
-})
+});
 
 app.get('/reset', function(req, res) {
 	mainResp = res;
