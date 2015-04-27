@@ -42,6 +42,7 @@ $(function() {
     var connectToPi = function() {
         $.get('/connect?ip=' + window.location.origin);
     };
+    connectToPi();
 
     $('#resetAll').on('click', function(e) {
         $.get('/reset');
@@ -58,7 +59,6 @@ $(function() {
     $('#generalSetup').on('click', function() {
         //socket.send('test');
         //$('#generalSetupWindow').modal();
-        $('#generalSetupWindow').modal('hide');
 
         connectToPi();
         return false;
@@ -67,6 +67,8 @@ $(function() {
     // $('#piConnect').on('click', function() {
     //     //socket.send('test');
 
+        //$('#generalSetupWindow').modal('hide');
+        //connectToPi();
 
     //     return false;
     // });
