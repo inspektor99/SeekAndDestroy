@@ -143,7 +143,7 @@ $(function() {
             var score = 0;
             currentGame.get('targets').each(function(target) {
                 //score += (parseFloat(target.get('points')) * parseInt(target.get('hit')));
-                score = parseFloat(target.get('score'));
+                score += parseFloat(target.get('score'));
 
                 $('#t' + target.get('id') + '_hit').val(target.get('hit'));
                 var targetTypeElem = $('#t' + target.get('id') + '_type');
