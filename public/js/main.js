@@ -40,7 +40,7 @@ $(function() {
     });
 
     var connectToPi = function() {
-        $.get('/connect?ip=192.168.1.80');
+        $.get('/connect?ip=' + window.location.origin);
     };
 
     $('#resetAll').on('click', function(e) {
