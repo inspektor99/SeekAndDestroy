@@ -29,7 +29,7 @@ $(function() {
     Sad.gameState = Sad.GameStates.Stopped;
 
     Sad.teams = new Sad.Teams();
-    var serverSocket = io.connect('http://192.168.1.80:3000');
+    var serverSocket = io.connect('http://raspberrypi:3000');
 
     $('#statusGameServer').tooltip({
         placement: 'bottom'
@@ -40,7 +40,7 @@ $(function() {
     });
 
     var connectToPi = function() {
-        $.get('/connect?ip=192.168.1.80');
+        $.get('/connect?ip=raspberrypi');
     };
 
     $('#resetAll').on('click', function(e) {
