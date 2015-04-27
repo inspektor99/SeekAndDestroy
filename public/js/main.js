@@ -57,19 +57,19 @@ $(function() {
 
     $('#generalSetup').on('click', function() {
         //socket.send('test');
-        $('#generalSetupWindow').modal();
-
-        return false;
-    });
-
-    $('#piConnect').on('click', function() {
-        //socket.send('test');
+        //$('#generalSetupWindow').modal();
         $('#generalSetupWindow').modal('hide');
 
         connectToPi();
-
         return false;
     });
+
+    // $('#piConnect').on('click', function() {
+    //     //socket.send('test');
+
+
+    //     return false;
+    // });
 
     serverSocket.on('connectedrpi', function() {
         $('#statusGameServer').removeClass('btn-default btn-success btn-danger btn-warning')
