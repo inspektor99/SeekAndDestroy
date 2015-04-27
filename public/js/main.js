@@ -29,7 +29,7 @@ $(function() {
     Sad.gameState = Sad.GameStates.Stopped;
 
     Sad.teams = new Sad.Teams();
-    var serverSocket = io.connect('http://192.168.1.80:3000');
+    var serverSocket = io.connect(window.location.origin);
 
     $('#statusGameServer').tooltip({
         placement: 'bottom'
