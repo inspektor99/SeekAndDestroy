@@ -56,13 +56,13 @@ $(function() {
         return false;
     });
 
-    $('#generalSetup').on('click', function() {
-        //socket.send('test');
-        //$('#generalSetupWindow').modal();
+    // $('#generalSetup').on('click', function() {
+    //     //socket.send('test');
+    //     //$('#generalSetupWindow').modal();
 
-        connectToPi();
-        return false;
-    });
+    //     connectToPi();
+    //     return false;
+    // });
 
     // $('#piConnect').on('click', function() {
     //     //socket.send('test');
