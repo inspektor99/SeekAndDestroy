@@ -29,7 +29,7 @@ $(function() {
     Sad.gameState = Sad.GameStates.Stopped;
 
     Sad.teams = new Sad.Teams();
-    var serverSocket = null; 
+    var serverSocket = io.connect('http://127.0.0.1:3000');
 
     $('#statusGameServer').tooltip({
         placement: 'bottom'
@@ -40,7 +40,7 @@ $(function() {
     });
 
     var connectToPi = function() {
-        $.get('/connect?ip=' + $('#raspPiAddress').val());
+        $.get('/connect?ip=127.0.0.1');
     };
 
     $('#resetAll').on('click', function(e) {
@@ -51,7 +51,6 @@ $(function() {
 
 
     $('#statusGameServer').on('click', function(e) {
-        serverSocket = io.connect('http://' + $('#raspPiAddress').val() + ':3000');
         connectToPi();
         return false;
     });
@@ -141,7 +140,8 @@ $(function() {
             $('#t1_type, #t2_type, #t3_type, #t4_type').addClass('muted');
             var score = 0;
             currentGame.get('targets').each(function(target) {
-                score += (parseFloat(target.get('points')) * parseInt(target.get('hit')));
+                //score += (parseFloat(target.get('points')) * parseInt(target.get('hit')));
+                score = parseFloat(target.get('score'));
 
                 $('#t' + target.get('id') + '_hit').val(target.get('hit'));
                 var targetTypeElem = $('#t' + target.get('id') + '_type');
