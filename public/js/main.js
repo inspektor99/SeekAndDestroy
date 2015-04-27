@@ -29,7 +29,7 @@ $(function() {
     Sad.gameState = Sad.GameStates.Stopped;
 
     Sad.teams = new Sad.Teams();
-    var serverSocket = io.connect('http://localhost:3000');
+    var serverSocket = null; 
 
     $('#statusGameServer').tooltip({
         placement: 'bottom'
@@ -40,7 +40,7 @@ $(function() {
     });
 
     var connectToPi = function() {
-        $.get('/connect?ip=' + $('#raspPiAddress').val());
+        $.get('/connect?ip=localhost');
     };
 
     $('#resetAll').on('click', function(e) {
@@ -51,6 +51,7 @@ $(function() {
 
 
     $('#statusGameServer').on('click', function(e) {
+        serverSocket = io.connect('http://' + $('#raspPiAddress').val() + ':3000');
         connectToPi();
         return false;
     });
